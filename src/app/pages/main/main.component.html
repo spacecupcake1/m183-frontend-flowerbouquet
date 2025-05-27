@@ -1,0 +1,13 @@
+<div class="topnav">
+  <input type="text" placeholder="Search.." [(ngModel)]="searchTerm" (input)="onSearch()">
+  <img src="https://static.vecteezy.com/system/resources/previews/010/141/447/original/filter-icon-sign-symbol-design-free-png.png" height="25px" width="25px" alt="filter" (click)="onFilter()">
+</div>
+<br>
+<br>
+<div class="flowers-container">
+  <div class="flower-card" *ngFor="let flower of flowers">
+    <a (click)="viewFlowerDetails(flower.id)"><h2>{{ flower.name }}</h2></a>
+    <img [src]="'/assets' + flower.imageUrl" alt="{{ flower.name }}">
+    <p>{{ flower.info }}</p>
+  </div>
+</div>

@@ -1,0 +1,85 @@
+.product-details {
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.product-details h2 {
+  text-align: left;
+  font-size: 30px;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.label {
+  font-weight: bold;
+  color: #555;
+  font-size: 25px;
+  padding-right: 20px
+}
+
+.value {
+  width: 100%;
+  text-align: left;
+  color: #777;
+  font-size: 25px;
+}
+
+.value.price {
+  color: #d9534f;
+}
+
+.addbtn {
+  background-color: #f04f9f;
+  color: white;
+  padding: 16px 20px;
+  margin: 8px 0;
+  border: none;
+  cursor: pointer;
+  opacity: 0.9;
+  font-size: 25px;
+  opacity: 1;
+}
+
+.addbtn:hover {
+  background-color: #218838;
+}
+
+button {
+  background-color: #f04f9f;
+  color: white;
+  margin: 8px 0;
+  border: none;
+  cursor: pointer;
+  font-size: 30px;
+}
+
+button:hover {
+  background-color: #218838;
+}
+
+.flowerimg {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.flowerimg img {
+  max-width: 50%;
+  height: auto;
+  max-height: 400px;
+}

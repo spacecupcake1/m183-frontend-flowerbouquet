@@ -1,0 +1,13 @@
+.header-content {
+  display: flex;
+  align-items: center;
+}
+
+.header-icon {
+  /* margin-right: 10px;
+  height: 70px; */
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 50%;
+}

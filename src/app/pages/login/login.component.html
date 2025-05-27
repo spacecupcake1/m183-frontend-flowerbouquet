@@ -1,0 +1,25 @@
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+  <div class="container">
+    <h1>Login</h1>
+    <p>Bitte geben Sie Ihre Daten einloggen</p>
+    <hr>
+    <form (ngSubmit)="onSubmit(loginForm)" #loginForm="ngForm">
+      <label for="uname"><b>Benutzername</b></label>
+      <input type="text" placeholder="Benutzername eingeben" name="username" id="username" required [(ngModel)]="user.username" #uname="ngModel">
+
+      <label for="psw"><b>Passwort</b></label>
+      <input type="password" placeholder="Passwort eingeben" name="password" id="password" required [(ngModel)]="user.password" #psw="ngModel">
+      <hr>
+      <button type="submit" class="loginbtn">Login</button>
+    </form>
+    <hr>
+    <p>Zum Registration:</p>
+    <button (click)="goRegister()" >Registration</button>
+    <hr>
+  </div>
+</body>
+</html>

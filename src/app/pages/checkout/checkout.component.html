@@ -1,0 +1,34 @@
+<h1>Checkout</h1>
+<p>Überprüfen Sie Ihren bouquet und wählen Sie die Versandart:</p>
+<div class="flowers-container">
+  <div class="flowers-card" *ngFor="let item of cartItems">
+    <div class="flower-info">
+      <!-- <img [src]="item.flower.imageUrl" alt="{{ item.flower.name }}"> -->
+      <p>{{ item.flower.name }}</p>
+    </div>
+    <div class="price">
+      <p>{{ item.flower.price | currency }}</p>
+      <p>Quantity: {{ item.quantity }}</p>
+    </div>
+  </div>
+
+  <div class="delivery-options">
+    <p>Versandart:</p>
+    <label class="radio-container">
+      <input type="radio" name="delivery" [(ngModel)]="deliveryOption" value="delivery" (change)="selectOption('delivery')">
+      Delivery to Address
+      <span class="checkmark"></span>
+    </label>
+    <label class="radio-container">
+      <input type="radio" name="delivery" [(ngModel)]="deliveryOption" value="pickup" (change)="selectOption('pickup')">
+      Pick Up
+      <span class="checkmark"></span>
+    </label>
+  </div>
+
+  <div class="total-price">
+    <h2>Gesamte Preis: {{ totalPrice | currency }}</h2>
+  </div>
+
+  <button class="bestellen-btn" (click)="bestellen()">Bestellen</button>
+</div>

@@ -1,0 +1,16 @@
+<h1>Bouquet Customizing</h1>
+<p>Adjust the quantity of each flower in your bouquet:</p>
+<div class="flowers-container">
+  <div class="flowers-card" *ngFor="let item of cartItems">
+    <div class="flower-info">
+      <!-- <img [src]="item.flower.imageUrl" alt="{{ item.flower.name }}"> -->
+      <p>{{ item.flower.name }}</p>
+    </div>
+    <div class="quantity-controls">
+      <button (click)="decreaseQuantity(item)">-</button>
+      <span>{{ item.quantity }}</span>
+      <button (click)="increaseQuantity(item)">+</button>
+    </div>
+  </div>
+  <button class="checkout-btn" (click)="checkout()">Checkout</button>
+</div>

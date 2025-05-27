@@ -1,0 +1,37 @@
+<div>
+  <button mat-icon-button (click)="goBack()" style="font-size: 30px;">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <br><br><br><br>
+  <div class="flowerimg">
+    <img [src]="'/assets' + flower.imageUrl" alt="{{ flower.name }}">
+  </div>
+  <div class="info-row">
+    <div class="label">Name:</div>
+    <div class="value">{{ flower.name }}</div>
+  </div>
+  <div class="info-row">
+    <div class="label">Meaning:</div>
+    <div class="value">{{ flower.meaning }}</div>
+  </div>
+  <div class="info-row">
+    <div class="label">Available:</div>
+    <div class="value">{{ flower.availablity }}</div>
+  </div>
+  <div class="info-row">
+    <div class="label">Information:</div>
+    <div class="value">{{ flower.info }}</div>
+  </div>
+  <div class="info-row">
+    <div class="label">Color:</div>
+    <div class="value">{{ flower.color }}</div>
+  </div>
+  <div class="info-row">
+    <div class="label">Price:</div>
+    <div class="value price">{{ flower.price }}</div>
+  </div>
+  <br><br><br>
+  <button class="addbtn" (click)="addFlowerToTemp()">Blume Hinfügen</button>
+  <p></p>
+  <button class="addbtn" (click)="goBouquet()">Bouquet anschauen</button>
+</div>
