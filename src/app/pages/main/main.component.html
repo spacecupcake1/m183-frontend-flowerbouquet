@@ -1,13 +1,93 @@
-<div class="topnav">
-  <input type="text" placeholder="Search.." [(ngModel)]="searchTerm" (input)="onSearch()">
-  <img src="https://static.vecteezy.com/system/resources/previews/010/141/447/original/filter-icon-sign-symbol-design-free-png.png" height="25px" width="25px" alt="filter" (click)="onFilter()">
-</div>
-<br>
-<br>
-<div class="flowers-container">
-  <div class="flower-card" *ngFor="let flower of flowers">
-    <a (click)="viewFlowerDetails(flower.id)"><h2>{{ flower.name }}</h2></a>
-    <img [src]="'/assets' + flower.imageUrl" alt="{{ flower.name }}">
-    <p>{{ flower.info }}</p>
+<div class="main-container">
+  <!-- Top Navigation -->
+  <div class="topnav">
+    <!-- Search Section -->
+    <div class="search-section">
+      <input type="text" placeholder="Search.." [(ngModel)]="searchTerm" (input)="onSearch()">
+      <img src="https://static.vecteezy.com/system/resources/previews/010/141/447/original/filter-icon-sign-symbol-design-free-png.png"
+           height="25px" width="25px" alt="filter" (click)="onFilter()" class="filter-icon">
+    </div>
+
+    <!-- User Section -->
+    <div class="user-section">
+      <!-- If user is logged in -->
+      <div *ngIf="isLoggedIn()" class="logged-in-section">
+        <span class="welcome-text">Welcome, {{ getCurrentUser()?.firstname }}!</span>
+
+        <!-- Admin Panel Button (only for admins) -->
+        <button *ngIf="isAdmin()"
+                mat-raised-button
+                color="accent"
+                (click)="goToAdminPanel()"
+                class="admin-btn">
+          🛠️ Admin Panel
+        </button>
+
+        <!-- Logout Button -->
+        <button mat-button (click)="logout()" class="logout-btn">
+          Logout
+        </button>
+      </div>
+
+      <!-- If user is not logged in -->
+      <div *ngIf="!isLoggedIn()" class="not-logged-in-section">
+        <button mat-button (click)="goToLogin()" class="login-btn">
+          Login
+        </button>
+        <button mat-raised-button color="primary" (click)="goToRegister()" class="register-btn">
+          Register
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Status Banner (only visible to admins) -->
+  <div *ngIf="isAdmin()" class="admin-banner">
+    <mat-icon>admin_panel_settings</mat-icon>
+    <span>Admin Mode Active - You have administrative privileges</span>
+  </div>
+
+  <!-- Main Content -->
+  <div class="content-section">
+    <!-- Flowers Grid -->
+    <div class="flowers-container">
+      <div class="flower-card" *ngFor="let flower of flowers">
+        <a (click)="viewFlowerDetails(flower.id)" class="flower-link">
+          <h2>{{ flower.name }}</h2>
+        </a>
+        <img [src]="'/assets' + flower.imageUrl" [alt]="flower.name" class="flower-image">
+        <p class="flower-info">{{ flower.info }}</p>
+
+        <!-- Flower Details -->
+        <div class="flower-details">
+          <span class="flower-price">€{{ flower.price }}</span>
+          <span class="flower-availability"
+                [class.available]="flower.availablity === 'Available'"
+                [class.unavailable]="flower.availablity === 'Unavailable'">
+            {{ flower.availablity }}
+          </span>
+        </div>
+
+        <!-- Admin Quick Actions (only for admins) -->
+        <div *ngIf="isAdmin()" class="admin-actions">
+          <button mat-icon-button
+                  color="primary"
+                  (click)="goToAdminPanel()"
+                  matTooltip="Edit in Admin Panel">
+            <mat-icon>edit</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- No Flowers Message -->
+    <div *ngIf="flowers.length === 0" class="no-flowers">
+      <mat-icon>local_florist</mat-icon>
+      <h3>No flowers found</h3>
+      <p>Try adjusting your search or filter criteria.</p>
+      <div *ngIf="isAdmin()">
+        <p>As an admin, you can <a (click)="goToAdminPanel()" class="admin-link">create new flowers</a>.</p>
+      </div>
+    </div>
   </div>
 </div>

@@ -3,6 +3,7 @@ import { NgModule } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BrowserModule } from '@angular/platform-browser';
 import { RouterModule, Routes } from '@angular/router';
+import { AdminFlowersComponent } from './pages/admin-flowers/admin-flowers.component';
 import { CheckoutComponent } from './pages/checkout/checkout.component';
 import { CustomicingComponent } from './pages/customicing/customicing.component';
 import { DetailPageComponent } from './pages/detail-page/detail-page.component';
@@ -16,7 +17,13 @@ const routes: Routes = [
   { path: 'register', component: RegisterComponent },
   { path: 'detail/:id', component: DetailPageComponent },
   { path: 'custom', component: CustomicingComponent },
-  { path: 'checkout', component: CheckoutComponent }
+  { path: 'checkout', component: CheckoutComponent },
+  { path: '', redirectTo: '/main', pathMatch: 'full' },
+  { path: 'main', component: MainComponent },
+  { path: 'detail/:id', component: DetailPageComponent },
+  { path: 'login', component: LoginComponent },
+  { path: 'admin/flowers', component: AdminFlowersComponent },
+  { path: '**', redirectTo: '/main' }
 ];
 
 @NgModule({

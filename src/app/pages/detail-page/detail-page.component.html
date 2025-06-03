@@ -1,37 +1,131 @@
-<div>
-  <button mat-icon-button (click)="goBack()" style="font-size: 30px;">
-    <mat-icon>arrow_back</mat-icon>
-  </button>
-  <br><br><br><br>
-  <div class="flowerimg">
-    <img [src]="'/assets' + flower.imageUrl" alt="{{ flower.name }}">
+<div class="detail-container">
+  <!-- Header with Back Button -->
+  <div class="detail-header">
+    <button mat-icon-button (click)="goBack()" class="back-button">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h1>Flower Details</h1>
+
+    <!-- Admin Badge -->
+    <div *ngIf="isAdmin()" class="admin-badge">
+      <mat-icon>admin_panel_settings</mat-icon>
+      <span>Admin</span>
+    </div>
   </div>
-  <div class="info-row">
-    <div class="label">Name:</div>
-    <div class="value">{{ flower.name }}</div>
+
+  <!-- Main Content -->
+  <div class="detail-content">
+    <!-- Flower Image -->
+    <div class="flower-image-section">
+      <img [src]="'/assets' + flower.imageUrl" [alt]="flower.name" class="flower-image">
+
+      <!-- Availability Badge -->
+      <div class="availability-overlay">
+        <span class="availability-badge"
+              [class.available]="isAvailable()"
+              [class.unavailable]="!isAvailable()">
+          {{ flower.availablity }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Flower Information -->
+    <div class="flower-info-section">
+      <!-- Title and Price -->
+      <div class="title-section">
+        <h2 class="flower-name">{{ flower.name }}</h2>
+        <div class="price-section">
+          <span class="price">€{{ flower.price }}</span>
+        </div>
+      </div>
+
+      <!-- Details Grid -->
+      <div class="details-grid">
+        <div class="detail-item">
+          <div class="label">Meaning:</div>
+          <div class="value">{{ flower.meaning }}</div>
+        </div>
+
+        <div class="detail-item">
+          <div class="label">Color:</div>
+          <div class="value">{{ flower.color }}</div>
+        </div>
+
+        <div class="detail-item full-width">
+          <div class="label">Information:</div>
+          <div class="value">{{ flower.info }}</div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <!-- User Actions -->
+        <div class="user-actions">
+          <button mat-raised-button
+                  color="primary"
+                  (click)="addFlowerToTemp()"
+                  [disabled]="!isAvailable()"
+                  class="add-button">
+            <mat-icon>add_shopping_cart</mat-icon>
+            {{ isAvailable() ? 'Add to Bouquet' : 'Not Available' }}
+          </button>
+
+          <button mat-button (click)="goBouquet()" class="view-bouquet-button">
+            <mat-icon>local_florist</mat-icon>
+            View Bouquet
+          </button>
+        </div>
+
+        <!-- Admin Actions -->
+        <div *ngIf="isAdmin()" class="admin-actions">
+          <h4>Admin Actions</h4>
+          <div class="admin-buttons">
+            <button mat-raised-button
+                    color="accent"
+                    (click)="editFlower()"
+                    [disabled]="isLoading">
+              <mat-icon>edit</mat-icon>
+              Edit Flower
+            </button>
+
+            <button mat-raised-button
+                    color="warn"
+                    (click)="deleteFlower()"
+                    [disabled]="isLoading">
+              <mat-icon>delete</mat-icon>
+              Delete Flower
+            </button>
+
+            <button mat-button (click)="goToAdminPanel()">
+              <mat-icon>dashboard</mat-icon>
+              Admin Panel
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Info -->
+      <div *ngIf="isLoggedIn()" class="user-info">
+        <div class="user-greeting">
+          <mat-icon>person</mat-icon>
+          <span>Welcome back, {{ getCurrentUser()?.firstname }}!</span>
+        </div>
+      </div>
+
+      <!-- Login Prompt for Non-Logged Users -->
+      <div *ngIf="!isLoggedIn()" class="login-prompt">
+        <mat-icon>info</mat-icon>
+        <p>Sign in to add flowers to your bouquet and track your orders.</p>
+        <button mat-button color="primary" routerLink="/login">
+          Sign In
+        </button>
+      </div>
+    </div>
   </div>
-  <div class="info-row">
-    <div class="label">Meaning:</div>
-    <div class="value">{{ flower.meaning }}</div>
+
+  <!-- Loading Overlay -->
+  <div *ngIf="isLoading" class="loading-overlay">
+    <mat-spinner diameter="50"></mat-spinner>
+    <p>Processing...</p>
   </div>
-  <div class="info-row">
-    <div class="label">Available:</div>
-    <div class="value">{{ flower.availablity }}</div>
-  </div>
-  <div class="info-row">
-    <div class="label">Information:</div>
-    <div class="value">{{ flower.info }}</div>
-  </div>
-  <div class="info-row">
-    <div class="label">Color:</div>
-    <div class="value">{{ flower.color }}</div>
-  </div>
-  <div class="info-row">
-    <div class="label">Price:</div>
-    <div class="value price">{{ flower.price }}</div>
-  </div>
-  <br><br><br>
-  <button class="addbtn" (click)="addFlowerToTemp()">Blume Hinfügen</button>
-  <p></p>
-  <button class="addbtn" (click)="goBouquet()">Bouquet anschauen</button>
 </div>

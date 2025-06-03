@@ -1,25 +1,71 @@
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
-<body>
-  <div class="container">
-    <h1>Login</h1>
-    <p>Bitte geben Sie Ihre Daten einloggen</p>
-    <hr>
-    <form (ngSubmit)="onSubmit(loginForm)" #loginForm="ngForm">
-      <label for="uname"><b>Benutzername</b></label>
-      <input type="text" placeholder="Benutzername eingeben" name="username" id="username" required [(ngModel)]="user.username" #uname="ngModel">
+<div class="login-container">
+  <div class="login-card">
+    <!-- Header -->
+    <div class="login-header">
+      <h1>🌸 Flower Bouquet</h1>
+      <h2>Welcome Back</h2>
+      <p>Sign in to manage your flower orders</p>
+    </div>
 
-      <label for="psw"><b>Passwort</b></label>
-      <input type="password" placeholder="Passwort eingeben" name="password" id="password" required [(ngModel)]="user.password" #psw="ngModel">
-      <hr>
-      <button type="submit" class="loginbtn">Login</button>
+    <!-- Login Form -->
+    <form (ngSubmit)="onLogin()" class="login-form">
+      <!-- Username Field -->
+      <mat-form-field appearance="fill" class="full-width">
+        <mat-label>Username</mat-label>
+        <input matInput
+               [(ngModel)]="username"
+               name="username"
+               required
+               autocomplete="username"
+               [disabled]="isLoading">
+        <mat-icon matSuffix>person</mat-icon>
+      </mat-form-field>
+
+      <!-- Password Field -->
+      <mat-form-field appearance="fill" class="full-width">
+        <mat-label>Password</mat-label>
+        <input matInput
+               type="password"
+               [(ngModel)]="password"
+               name="password"
+               required
+               autocomplete="current-password"
+               [disabled]="isLoading">
+        <mat-icon matSuffix>lock</mat-icon>
+      </mat-form-field>
+
+      <!-- Error Message -->
+      <div *ngIf="errorMessage" class="error-message">
+        <mat-icon>error</mat-icon>
+        {{ errorMessage }}
+      </div>
+
+      <!-- Login Button -->
+      <button mat-raised-button
+              color="primary"
+              type="submit"
+              class="login-button"
+              [disabled]="isLoading || !username.trim() || !password.trim()">
+        <mat-spinner *ngIf="isLoading" diameter="20" class="login-spinner"></mat-spinner>
+        <span *ngIf="!isLoading">Sign In</span>
+        <span *ngIf="isLoading">Signing In...</span>
+      </button>
     </form>
-    <hr>
-    <p>Zum Registration:</p>
-    <button (click)="goRegister()" >Registration</button>
-    <hr>
+
+    <!-- Additional Actions -->
+    <div class="login-actions">
+      <p>Don't have an account?</p>
+      <button mat-button color="accent" (click)="goToRegister()" [disabled]="isLoading">
+        Create Account
+      </button>
+    </div>
+
+    <!-- Back to Main -->
+    <div class="back-action">
+      <button mat-button (click)="goToMain()" [disabled]="isLoading">
+        ← Back to Main Page
+      </button>
+    </div>
+
   </div>
-</body>
-</html>
+</div>

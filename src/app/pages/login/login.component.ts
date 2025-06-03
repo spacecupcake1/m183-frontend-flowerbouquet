@@ -8,30 +8,53 @@ import { UserService } from 'src/app/service/user.service';
   styleUrls: ['./login.component.css']
 })
 export class LoginComponent {
-  user = { username: '', password: '' };
+  username = '';
+  password = '';
+  isLoading = false;
+  errorMessage = '';
 
-  constructor(private userService: UserService, private router: Router) {}
+  constructor(
+    private userService: UserService,
+    private router: Router
+  ) { }
 
-  onSubmit(loginForm: any): void {
-    if (loginForm.valid) {
-      this.userService.getLogin(this.user.username, this.user.password).subscribe(
-        response => {
-          // Handle successful login
-          console.log(response);
-          this.router.navigate(['main']);
-        },
-        error => {
-          // Handle login error
-          console.error('Login failed', error);
-          alert('Invalid username or password');
-        }
-      );
+  onLogin(): void {
+    if (!this.username.trim() || !this.password.trim()) {
+      this.errorMessage = 'Please enter both username and password';
+      return;
     }
+
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    this.userService.login(this.username, this.password).subscribe({
+      next: (response) => {
+        console.log('Login successful:', response);
+
+        if (response.isAdmin) {
+          alert(`Welcome back, Admin ${response.firstname}! You have administrative privileges.`);
+        } else {
+          alert(`Welcome back, ${response.firstname}!`);
+        }
+
+        this.router.navigate(['/main']);
+      },
+      error: (error) => {
+        console.error('Login error:', error);
+        this.errorMessage = 'Invalid username or password';
+        this.isLoading = false;
+      },
+      complete: () => {
+        this.isLoading = false;
+      }
+    });
   }
 
-  goRegister(): void {
+  goToRegister(): void {
     this.router.navigate(['/register']);
   }
 
-
+  goToMain(): void {
+    this.router.navigate(['/main']);
+  }
 }
