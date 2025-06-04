@@ -3,8 +3,8 @@
   <div class="admin-header">
     <h1>Admin - Flower Management</h1>
     <div class="header-buttons">
-      <button mat-button (click)="goBack()">← Back to Main</button>
-      <button mat-button (click)="logout()">Logout</button>
+      <button (click)="goBack()">← Back to Main</button>
+      <button (click)="logout()">Logout</button>
     </div>
   </div>
 
@@ -29,10 +29,15 @@
 
   <!-- Action Buttons -->
   <div class="action-section">
-    <button mat-raised-button color="primary" (click)="startCreating()"
-            [disabled]="isEditing || isCreating">
+    <button class="btn btn-primary" (click)="startCreating()"
+            [disabled]="isEditing || isCreating || isSubmitting">
       + Create New Flower
     </button>
+  </div>
+
+  <!-- Submit Error Display -->
+  <div *ngIf="submitError" class="error-message">
+    <strong>Error:</strong> {{ submitError }}
   </div>
 
   <!-- Create/Edit Form -->
@@ -40,65 +45,137 @@
     <div class="form-container">
       <h2>{{ isCreating ? 'Create New Flower' : 'Edit Flower' }}</h2>
 
-      <form class="flower-form">
-        <div class="form-row">
-          <mat-form-field appearance="fill">
-            <mat-label>Name</mat-label>
-            <input matInput [(ngModel)]="editingFlower.name" name="name" required>
-            <mat-error *ngIf="hasError('name')">{{ getError('name') }}</mat-error>
-          </mat-form-field>
+      <form [formGroup]="flowerForm" (ngSubmit)="isCreating ? createFlower() : updateFlower()" class="flower-form" novalidate>
 
-          <mat-form-field appearance="fill">
-            <mat-label>Color</mat-label>
-            <input matInput [(ngModel)]="editingFlower.color" name="color" required>
-            <mat-error *ngIf="hasError('color')">{{ getError('color') }}</mat-error>
-          </mat-form-field>
+        <!-- Row 1: Name and Color -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="name">Name *</label>
+            <input
+              type="text"
+              id="name"
+              formControlName="name"
+              [class.error-input]="hasError('name')"
+              placeholder="Enter flower name"
+              maxlength="100">
+            <div *ngIf="hasError('name')" class="error">{{ getError('name') }}</div>
+          </div>
+
+          <div class="form-group">
+            <label for="color">Color *</label>
+            <input
+              type="text"
+              id="color"
+              formControlName="color"
+              [class.error-input]="hasError('color')"
+              placeholder="Enter flower color"
+              maxlength="100">
+            <div *ngIf="hasError('color')" class="error">{{ getError('color') }}</div>
+          </div>
         </div>
 
+        <!-- Row 2: Price and Availability -->
         <div class="form-row">
-          <mat-form-field appearance="fill">
-            <mat-label>Price</mat-label>
-            <input matInput type="number" [(ngModel)]="editingFlower.price" name="price" required min="0">
-            <mat-error *ngIf="hasError('price')">{{ getError('price') }}</mat-error>
-          </mat-form-field>
+          <div class="form-group">
+            <label for="price">Price (€) *</label>
+            <input
+              type="number"
+              id="price"
+              formControlName="price"
+              [class.error-input]="hasError('price')"
+              placeholder="Enter price"
+              min="1"
+              max="9999">
+            <div *ngIf="hasError('price')" class="error">{{ getError('price') }}</div>
+          </div>
 
-          <mat-form-field appearance="fill">
-            <mat-label>Availability</mat-label>
-            <mat-select [(ngModel)]="editingFlower.availablity" name="availablity" required>
-              <mat-option value="Available">Available</mat-option>
-              <mat-option value="Unavailable">Unavailable</mat-option>
-            </mat-select>
-            <mat-error *ngIf="hasError('availablity')">{{ getError('availablity') }}</mat-error>
-          </mat-form-field>
+          <div class="form-group">
+            <label for="availablity">Availability *</label>
+            <select
+              id="availablity"
+              formControlName="availablity"
+              [class.error-input]="hasError('availablity')">
+              <option value="Available">Available</option>
+              <option value="Unavailable">Unavailable</option>
+            </select>
+            <div *ngIf="hasError('availablity')" class="error">{{ getError('availablity') }}</div>
+          </div>
         </div>
 
-        <mat-form-field appearance="fill" class="full-width">
-          <mat-label>Meaning</mat-label>
-          <textarea matInput [(ngModel)]="editingFlower.meaning" name="meaning" required rows="2"></textarea>
-          <mat-error *ngIf="hasError('meaning')">{{ getError('meaning') }}</mat-error>
-        </mat-form-field>
+        <!-- Row 3: Meaning (Full Width) -->
+        <div class="form-group full-width">
+          <label for="meaning">Meaning *</label>
+          <textarea
+            id="meaning"
+            formControlName="meaning"
+            [class.error-input]="hasError('meaning')"
+            placeholder="Enter the meaning or symbolism of this flower"
+            rows="3"
+            maxlength="1000"></textarea>
+          <div class="char-count">
+            {{ meaningControl?.value?.length || 0 }}/1000 characters
+          </div>
+          <div *ngIf="hasError('meaning')" class="error">{{ getError('meaning') }}</div>
+        </div>
 
-        <mat-form-field appearance="fill" class="full-width">
-          <mat-label>Information</mat-label>
-          <textarea matInput [(ngModel)]="editingFlower.info" name="info" required rows="3"></textarea>
-          <mat-error *ngIf="hasError('info')">{{ getError('info') }}</mat-error>
-        </mat-form-field>
+        <!-- Row 4: Information (Full Width) -->
+        <div class="form-group full-width">
+          <label for="info">Information *</label>
+          <textarea
+            id="info"
+            formControlName="info"
+            [class.error-input]="hasError('info')"
+            placeholder="Enter detailed information about this flower"
+            rows="4"
+            maxlength="1000"></textarea>
+          <div class="char-count">
+            {{ infoControl?.value?.length || 0 }}/1000 characters
+          </div>
+          <div *ngIf="hasError('info')" class="error">{{ getError('info') }}</div>
+        </div>
 
-        <mat-form-field appearance="fill" class="full-width">
-          <mat-label>Image URL</mat-label>
-          <input matInput [(ngModel)]="editingFlower.imageUrl" name="imageUrl" required>
-          <mat-error *ngIf="hasError('imageUrl')">{{ getError('imageUrl') }}</mat-error>
-        </mat-form-field>
+        <!-- Row 5: Image URL (Full Width) -->
+        <div class="form-group full-width">
+          <label for="imageUrl">Image URL *</label>
+          <input
+            type="url"
+            id="imageUrl"
+            formControlName="imageUrl"
+            [class.error-input]="hasError('imageUrl')"
+            placeholder="https://example.com/flower-image.jpg"
+            maxlength="500">
+          <div class="input-help">
+            Enter a valid HTTPS URL for the flower image
+          </div>
+          <div *ngIf="hasError('imageUrl')" class="error">{{ getError('imageUrl') }}</div>
+        </div>
 
+        <!-- Form Buttons -->
         <div class="form-buttons">
-          <button mat-raised-button color="primary" type="button"
-                  (click)="isCreating ? createFlower() : updateFlower()">
-            {{ isCreating ? 'Create Flower' : 'Update Flower' }}
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="flowerForm.invalid || isSubmitting">
+            <span *ngIf="isSubmitting">⏳ Processing...</span>
+            <span *ngIf="!isSubmitting">
+              {{ isCreating ? 'Create Flower' : 'Update Flower' }}
+            </span>
           </button>
-          <button mat-button type="button"
-                  (click)="isCreating ? cancelCreate() : cancelEdit()">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="isCreating ? cancelCreate() : cancelEdit()"
+            [disabled]="isSubmitting">
             Cancel
           </button>
+        </div>
+
+        <!-- Form Status Debug (Remove in production) -->
+        <div class="form-debug" *ngIf="false">
+          <p><strong>Form Status:</strong> {{ flowerForm.status }}</p>
+          <p><strong>Form Valid:</strong> {{ flowerForm.valid }}</p>
+          <p><strong>Form Touched:</strong> {{ flowerForm.touched }}</p>
+          <p><strong>Form Dirty:</strong> {{ flowerForm.dirty }}</p>
         </div>
       </form>
     </div>
@@ -109,77 +186,62 @@
     <h2>All Flowers ({{ flowers.length }})</h2>
 
     <div class="flowers-table-container">
-      <table mat-table [dataSource]="flowers" class="flowers-table">
-        <!-- ID Column -->
-        <ng-container matColumnDef="id">
-          <th mat-header-cell *matHeaderCellDef>ID</th>
-          <td mat-cell *matCellDef="let flower">{{ flower.id }}</td>
-        </ng-container>
-
-        <!-- Image Column -->
-        <ng-container matColumnDef="image">
-          <th mat-header-cell *matHeaderCellDef>Image</th>
-          <td mat-cell *matCellDef="let flower">
-            <img [src]="'/assets' + flower.imageUrl" [alt]="flower.name" class="flower-thumbnail">
-          </td>
-        </ng-container>
-
-        <!-- Name Column -->
-        <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef>Name</th>
-          <td mat-cell *matCellDef="let flower">{{ flower.name }}</td>
-        </ng-container>
-
-        <!-- Color Column -->
-        <ng-container matColumnDef="color">
-          <th mat-header-cell *matHeaderCellDef>Color</th>
-          <td mat-cell *matCellDef="let flower">{{ flower.color }}</td>
-        </ng-container>
-
-        <!-- Price Column -->
-        <ng-container matColumnDef="price">
-          <th mat-header-cell *matHeaderCellDef>Price</th>
-          <td mat-cell *matCellDef="let flower">{{ flower.price | currency:'EUR':'symbol':'1.2-2' }}</td>
-        </ng-container>
-
-        <!-- Availability Column -->
-        <ng-container matColumnDef="availability">
-          <th mat-header-cell *matHeaderCellDef>Availability</th>
-          <td mat-cell *matCellDef="let flower">
-            <span class="availability-badge"
-                  [class.available]="flower.availablity === 'Available'"
-                  [class.unavailable]="flower.availablity === 'Unavailable'">
-              {{ flower.availablity }}
-            </span>
-          </td>
-        </ng-container>
-
-        <!-- Actions Column -->
-        <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef>Actions</th>
-          <td mat-cell *matCellDef="let flower">
-            <button mat-icon-button color="primary"
-                    (click)="startEditing(flower)"
-                    [disabled]="isEditing || isCreating"
-                    matTooltip="Edit">
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button mat-icon-button color="warn"
-                    (click)="deleteFlower(flower)"
-                    [disabled]="isEditing || isCreating"
-                    matTooltip="Delete">
-              <mat-icon>delete</mat-icon>
-            </button>
-          </td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="['id', 'image', 'name', 'color', 'price', 'availability', 'actions']"></tr>
-        <tr mat-row *matRowDef="let row; columns: ['id', 'image', 'name', 'color', 'price', 'availability', 'actions'];"></tr>
+      <table class="flowers-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Image</th>
+            <th>Name</th>
+            <th>Color</th>
+            <th>Price</th>
+            <th>Availability</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let flower of flowers">
+            <td>{{ flower.id }}</td>
+            <td>
+              <img [src]="'/assets' + flower.imageUrl" [alt]="flower.name" class="flower-thumbnail"
+                   (error)="onImageError($event)">
+            </td>
+            <td>{{ flower.name }}</td>
+            <td>{{ flower.color }}</td>
+            <td>€{{ flower.price }}</td>
+            <td>
+              <span class="availability-badge"
+                    [class.available]="flower.availablity === 'Available'"
+                    [class.unavailable]="flower.availablity === 'Unavailable'">
+                {{ flower.availablity }}
+              </span>
+            </td>
+            <td>
+              <button class="btn btn-sm btn-primary"
+                      (click)="startEditing(flower)"
+                      [disabled]="isEditing || isCreating || isSubmitting"
+                      title="Edit Flower">
+                ✏️ Edit
+              </button>
+              <button class="btn btn-sm btn-danger"
+                      (click)="deleteFlower(flower)"
+                      [disabled]="isEditing || isCreating || isSubmitting"
+                      title="Delete Flower">
+                🗑️ Delete
+              </button>
+            </td>
+          </tr>
+        </tbody>
       </table>
     </div>
 
     <div *ngIf="flowers.length === 0" class="no-flowers">
       <p>No flowers found. Create your first flower!</p>
     </div>
+  </div>
+
+  <!-- Security Notice -->
+  <div class="security-notice">
+    <h4>🔒 Security Information</h4>
+    <p>All input is validated and sanitized to prevent security vulnerabilities. Only safe content is allowed.</p>
   </div>
 </div>

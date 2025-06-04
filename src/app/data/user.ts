@@ -1,12 +1,12 @@
-export class User {
-  public id!: number;
-  public username = '';
-  public firstname = '';
-  public lastname = '';
-  public email = '';
-  public password = '';
-  public roles?: string[];
-  public isAdmin?: boolean;
+export interface User {
+  id: number;
+  username: string;
+  firstname: string;
+  lastname: string;
+  email: string;
+  roles: string[];
+  isAdmin: boolean;
+  password?: string; // Optional since we don't send passwords to frontend
 }
 
 export interface LoginResponse {

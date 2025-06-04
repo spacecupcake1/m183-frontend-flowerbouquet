@@ -1,17 +1,20 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { User } from 'src/app/data/user';
 import { Flower, FlowerService } from 'src/app/service/flower.service';
-import { User, UserService } from 'src/app/service/user.service';
+import { UserService } from 'src/app/service/user.service';
 
 @Component({
   selector: 'app-main',
   templateUrl: './main.component.html',
   styleUrls: ['./main.component.css']
 })
-export class MainComponent implements OnInit {
+export class MainComponent implements OnInit, OnDestroy {
   flowers: Flower[] = [];
   searchTerm: string = '';
   currentUser: User | null = null;
+  private userSubscription: Subscription = new Subscription();
 
   constructor(
     private flowerService: FlowerService,
@@ -23,9 +26,16 @@ export class MainComponent implements OnInit {
     this.loadFlowers();
 
     // Subscribe to current user changes
-    this.userService.currentUser$.subscribe(user => {
+    this.userSubscription = this.userService.currentUser$.subscribe(user => {
       this.currentUser = user;
     });
+  }
+
+  ngOnDestroy(): void {
+    // Clean up subscription
+    if (this.userSubscription) {
+      this.userSubscription.unsubscribe();
+    }
   }
 
   loadFlowers(): void {
@@ -86,6 +96,10 @@ export class MainComponent implements OnInit {
     return this.currentUser;
   }
 
+  getCurrentUserId(): number | null {
+    return this.currentUser ? this.currentUser.id : null;
+  }
+
   goToLogin(): void {
     this.router.navigate(['/login']);
   }
@@ -95,8 +109,20 @@ export class MainComponent implements OnInit {
   }
 
   logout(): void {
-    this.userService.logout();
-    alert('You have been logged out successfully.');
+    this.userService.logout().subscribe({
+      next: () => {
+        console.log('Logout successful');
+        alert('You have been logged out successfully.');
+        // Optional: redirect to login page
+        this.router.navigate(['/login']);
+      },
+      error: (error) => {
+        console.error('Logout error:', error);
+        // Still clear local state even if server request fails
+        alert('Logged out (with errors).');
+        this.router.navigate(['/login']);
+      }
+    });
   }
 
   // ========== ADMIN FUNCTIONS ==========

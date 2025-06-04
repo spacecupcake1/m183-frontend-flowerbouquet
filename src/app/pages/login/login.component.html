@@ -8,61 +8,65 @@
     </div>
 
     <!-- Login Form -->
-    <form (ngSubmit)="onLogin()" class="login-form">
+    <form [formGroup]="loginForm" (ngSubmit)="onLogin()" class="login-form" novalidate>
       <!-- Username Field -->
-      <mat-form-field appearance="fill" class="full-width">
-        <mat-label>Username</mat-label>
-        <input matInput
-               [(ngModel)]="username"
-               name="username"
-               required
-               autocomplete="username"
-               [disabled]="isLoading">
-        <mat-icon matSuffix>person</mat-icon>
-      </mat-form-field>
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input
+          type="text"
+          id="username"
+          formControlName="username"
+          [class.error-input]="hasError('username')"
+          placeholder="Enter your username"
+          autocomplete="username"
+          (blur)="onFieldBlur('username')"
+          (input)="onFieldInput('username')"
+          [disabled]="isLoading">
+        <div *ngIf="hasError('username')" class="error">{{ getError('username') }}</div>
+      </div>
 
       <!-- Password Field -->
-      <mat-form-field appearance="fill" class="full-width">
-        <mat-label>Password</mat-label>
-        <input matInput
-               type="password"
-               [(ngModel)]="password"
-               name="password"
-               required
-               autocomplete="current-password"
-               [disabled]="isLoading">
-        <mat-icon matSuffix>lock</mat-icon>
-      </mat-form-field>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          formControlName="password"
+          [class.error-input]="hasError('password')"
+          placeholder="Enter your password"
+          autocomplete="current-password"
+          (blur)="onFieldBlur('password')"
+          (input)="onFieldInput('password')"
+          [disabled]="isLoading">
+        <div *ngIf="hasError('password')" class="error">{{ getError('password') }}</div>
+      </div>
 
       <!-- Error Message -->
       <div *ngIf="errorMessage" class="error-message">
-        <mat-icon>error</mat-icon>
-        {{ errorMessage }}
+        <strong>⚠️ Error:</strong> {{ errorMessage }}
       </div>
 
       <!-- Login Button -->
-      <button mat-raised-button
-              color="primary"
-              type="submit"
-              class="login-button"
-              [disabled]="isLoading || !username.trim() || !password.trim()">
-        <mat-spinner *ngIf="isLoading" diameter="20" class="login-spinner"></mat-spinner>
-        <span *ngIf="!isLoading">Sign In</span>
-        <span *ngIf="isLoading">Signing In...</span>
+      <button
+        type="submit"
+        class="btn btn-primary login-button"
+        [disabled]="!isFormValid || isLoading">
+        <span *ngIf="isLoading">⏳ Signing In...</span>
+        <span *ngIf="!isLoading">🔐 Sign In</span>
       </button>
     </form>
 
     <!-- Additional Actions -->
     <div class="login-actions">
       <p>Don't have an account?</p>
-      <button mat-button color="accent" (click)="goToRegister()" [disabled]="isLoading">
+      <button class="btn btn-secondary" (click)="goToRegister()" [disabled]="isLoading">
         Create Account
       </button>
     </div>
 
     <!-- Back to Main -->
     <div class="back-action">
-      <button mat-button (click)="goToMain()" [disabled]="isLoading">
+      <button class="btn btn-link" (click)="goToMain()" [disabled]="isLoading">
         ← Back to Main Page
       </button>
     </div>

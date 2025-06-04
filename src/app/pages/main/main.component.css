@@ -1,7 +1,8 @@
 .main-container {
   padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  min-height: 100vh;
+  background-color: #f8f9fa;
 }
 
 /* Top Navigation */
@@ -9,40 +10,48 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
+  padding: 20px 30px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 10px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
+  border-radius: 15px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  margin-bottom: 30px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .search-section {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 15px;
+  flex: 1;
+  max-width: 500px;
 }
 
 .search-section input {
-  padding: 10px 15px;
+  padding: 12px 20px;
   border: none;
   border-radius: 25px;
-  width: 300px;
+  width: 100%;
   font-size: 16px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
 .search-section input:focus {
   outline: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
 }
 
 .filter-icon {
   cursor: pointer;
   background: white;
-  padding: 8px;
+  padding: 12px;
   border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease;
+  width: 24px;
+  height: 24px;
 }
 
 .filter-icon:hover {
@@ -53,38 +62,44 @@
 .user-section {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 20px;
+  flex-shrink: 0;
 }
 
 .logged-in-section {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 20px;
 }
 
 .not-logged-in-section {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 15px;
 }
 
 .welcome-text {
   color: white;
-  font-weight: 500;
+  font-weight: 600;
   font-size: 16px;
+  white-space: nowrap;
 }
 
 .admin-btn {
   background: #ff6b35 !important;
   color: white !important;
-  border-radius: 20px !important;
+  border-radius: 25px !important;
   font-weight: bold !important;
+  padding: 10px 20px !important;
+  font-size: 14px !important;
 }
 
 .logout-btn, .login-btn, .register-btn {
   color: white !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-  border-radius: 20px !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 25px !important;
+  padding: 8px 16px !important;
+  font-size: 14px !important;
 }
 
 .register-btn {
@@ -95,14 +110,17 @@
 .admin-banner {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 20px;
+  gap: 15px;
+  padding: 15px 30px;
   background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
   color: white;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  font-weight: 500;
+  border-radius: 15px;
+  margin-bottom: 30px;
+  font-weight: 600;
+  font-size: 16px;
   animation: fadeInDown 0.5s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @keyframes fadeInDown {
@@ -118,30 +136,38 @@
 
 /* Content Section */
 .content-section {
-  margin-top: 30px;
+  margin-top: 0;
+  width: 100%;
 }
 
 /* Flowers Container */
 .flowers-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 25px;
-  margin-top: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 30px;
+  margin-top: 0;
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
 }
 
 .flower-card {
   background: white;
-  border-radius: 15px;
-  padding: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 20px;
+  padding: 25px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  height: auto;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
 }
 
 .flower-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+  transform: translateY(-8px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
 }
 
 .flower-link {
@@ -152,9 +178,10 @@
 
 .flower-card h2 {
   color: #2c3e50;
-  margin: 0 0 15px 0;
-  font-size: 1.5rem;
-  font-weight: 600;
+  margin: 0 0 20px 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  min-height: 40px;
 }
 
 .flower-card h2:hover {
@@ -164,36 +191,40 @@
 
 .flower-image {
   width: 100%;
-  height: 200px;
+  height: 220px;
   object-fit: cover;
-  border-radius: 10px;
-  margin-bottom: 15px;
+  border-radius: 15px;
+  margin-bottom: 20px;
 }
 
 .flower-info {
   color: #6c757d;
-  font-size: 14px;
-  line-height: 1.5;
-  margin-bottom: 15px;
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  flex-grow: 1;
+  min-height: 60px;
 }
 
 .flower-details {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #f1f3f4;
 }
 
 .flower-price {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   font-weight: bold;
   color: #27ae60;
 }
 
 .flower-availability {
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 0.8rem;
+  padding: 6px 15px;
+  border-radius: 25px;
+  font-size: 0.85rem;
   font-weight: bold;
   text-transform: uppercase;
 }
@@ -211,12 +242,13 @@
 /* Admin Actions */
 .admin-actions {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  background: rgba(255, 255, 255, 0.9);
+  top: 15px;
+  right: 15px;
+  background: rgba(255, 255, 255, 0.95);
   border-radius: 50%;
   opacity: 0;
   transition: opacity 0.3s ease;
+  z-index: 10;
 }
 
 .flower-card:hover .admin-actions {
@@ -226,32 +258,38 @@
 /* No Flowers Message */
 .no-flowers {
   text-align: center;
-  padding: 60px 20px;
+  padding: 80px 20px;
   color: #6c757d;
+  width: 100%;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
 .no-flowers mat-icon {
-  font-size: 4rem;
-  height: 4rem;
-  width: 4rem;
+  font-size: 5rem;
+  height: 5rem;
+  width: 5rem;
   color: #e9ecef;
-  margin-bottom: 20px;
+  margin-bottom: 30px;
 }
 
 .no-flowers h3 {
-  margin: 20px 0 10px 0;
+  margin: 30px 0 15px 0;
   color: #495057;
+  font-size: 1.5rem;
 }
 
 .no-flowers p {
-  margin: 10px 0;
-  font-size: 1.1rem;
+  margin: 15px 0;
+  font-size: 1.2rem;
 }
 
 .admin-link {
   color: #667eea;
   cursor: pointer;
   text-decoration: underline;
+  font-weight: 600;
 }
 
 .admin-link:hover {
@@ -259,25 +297,32 @@
 }
 
 /* Responsive Design */
+@media (max-width: 1200px) {
+  .flowers-container {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 25px;
+  }
+}
+
 @media (max-width: 768px) {
   .main-container {
-    padding: 10px;
+    padding: 15px;
   }
 
   .topnav {
     flex-direction: column;
-    gap: 15px;
-    padding: 15px;
+    gap: 20px;
+    padding: 20px;
   }
 
   .search-section {
     width: 100%;
+    max-width: none;
     justify-content: center;
   }
 
   .search-section input {
     width: 100%;
-    max-width: 300px;
   }
 
   .user-section {
@@ -287,27 +332,55 @@
 
   .flowers-container {
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 15px;
+    gap: 20px;
+    padding: 5px;
   }
 
   .flower-card {
-    padding: 15px;
+    padding: 20px;
+    min-height: 380px;
+  }
+
+  .flower-card h2 {
+    font-size: 1.4rem;
+  }
+
+  .flower-image {
+    height: 180px;
   }
 
   .admin-banner {
     text-align: center;
     flex-direction: column;
-    gap: 5px;
+    gap: 10px;
+    padding: 15px 20px;
   }
 }
 
 @media (max-width: 480px) {
+  .main-container {
+    padding: 10px;
+  }
+
   .flowers-container {
     grid-template-columns: 1fr;
+    gap: 15px;
   }
 
   .logged-in-section, .not-logged-in-section {
     flex-direction: column;
     gap: 10px;
+  }
+
+  .welcome-text {
+    text-align: center;
+  }
+
+  .topnav {
+    padding: 15px;
+  }
+
+  .flower-card {
+    min-height: 350px;
   }
 }

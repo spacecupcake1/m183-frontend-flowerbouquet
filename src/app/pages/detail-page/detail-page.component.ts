@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Flower } from 'src/app/data/flower';
+import { User } from 'src/app/data/user';
 import { FlowerService } from 'src/app/service/flower.service';
 import { UserService } from 'src/app/service/user.service';
 
@@ -128,7 +129,13 @@ export class DetailPageComponent implements OnInit {
     return this.flower.availablity === 'Available';
   }
 
-  getCurrentUser() {
-    return this.userService.getCurrentUser();
+  getCurrentUser(): User | null {
+    return this.userService.getCurrentUserData();
   }
+
+  getCurrentUserId(): number | null {
+    return this.userService.getCurrentUserId();
+  }
+
+
 }
