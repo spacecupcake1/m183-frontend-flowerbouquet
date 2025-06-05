@@ -1,3 +1,4 @@
+<!-- Updated main.component.html -->
 <div class="main-container">
   <!-- Top Navigation -->
   <div class="topnav">
@@ -55,7 +56,12 @@
         <a (click)="viewFlowerDetails(flower.id)" class="flower-link">
           <h2>{{ flower.name }}</h2>
         </a>
-        <img [src]="'/assets' + flower.imageUrl" [alt]="flower.name" class="flower-image">
+        <!-- Updated image src with debug -->
+        <img [src]="getImageUrl(flower.imageUrl)"
+             [alt]="flower.name"
+             class="flower-image"
+             (error)="onImageError($event)"
+             loading="lazy">
         <p class="flower-info">{{ flower.info }}</p>
 
         <!-- Flower Details -->

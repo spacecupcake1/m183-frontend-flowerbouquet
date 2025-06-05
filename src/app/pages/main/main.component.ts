@@ -135,6 +135,59 @@ export class MainComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ========== IMAGE HANDLING ==========
+
+  /**
+   * Constructs the full image URL for display
+   */
+  getImageUrl(imageUrl: string): string {
+    console.log('Original imageUrl:', imageUrl); // Debug log
+
+    if (!imageUrl) {
+      return 'assets/images/placeholder.jpg';
+    }
+
+    // If imageUrl already starts with 'assets/', return as is
+    if (imageUrl.startsWith('assets/')) {
+      console.log('Already has assets prefix:', imageUrl);
+      return imageUrl;
+    }
+
+    // If imageUrl starts with 'http' or 'https', it's an external URL
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      console.log('External URL:', imageUrl);
+      return imageUrl;
+    }
+
+    // If imageUrl starts with '/', remove it and prepend 'assets/'
+    if (imageUrl.startsWith('/')) {
+      const result = 'assets' + imageUrl;
+      console.log('Removed leading slash:', result);
+      return result;
+    }
+
+    // If imageUrl starts with 'images/', prepend 'assets/'
+    if (imageUrl.startsWith('images/')) {
+      const result = 'assets/' + imageUrl;
+      console.log('Added assets prefix:', result);
+      return result;
+    }
+
+    // Otherwise, assume it's just a filename and prepend 'assets/images/'
+    const result = 'assets/images/' + imageUrl;
+    console.log('Added full path:', result);
+    return result;
+  }
+
+  /**
+   * Handle image loading errors
+   */
+  onImageError(event: any): void {
+    console.warn('Failed to load image:', event.target.src);
+    // Set a fallback image
+    event.target.src = 'assets/images/placeholder.jpg';
+  }
+
   // ========== HELPER METHODS ==========
 
   private getMockFlowers(): Flower[] {
@@ -142,7 +195,7 @@ export class MainComponent implements OnInit, OnDestroy {
       {
         id: 1,
         name: 'Rose',
-        imageUrl: '/roses/red-rose.jpg',
+        imageUrl: 'images/Rose.jpg',
         info: 'A beautiful red rose.',
         meaning: 'Love and passion',
         availablity: 'Available',
@@ -152,7 +205,7 @@ export class MainComponent implements OnInit, OnDestroy {
       {
         id: 2,
         name: 'Tulip',
-        imageUrl: '/tulips/yellow-tulip.jpg',
+        imageUrl: 'images/Tulip.jpg',
         info: 'A vibrant tulip.',
         meaning: 'Perfect love',
         availablity: 'Unavailable',
@@ -162,7 +215,7 @@ export class MainComponent implements OnInit, OnDestroy {
       {
         id: 3,
         name: 'Sunflower',
-        imageUrl: '/sunflowers/bright-sunflower.jpg',
+        imageUrl: 'images/Sunflower.jpg',
         info: 'A bright sunflower.',
         meaning: 'Loyalty and devotion',
         availablity: 'Available',

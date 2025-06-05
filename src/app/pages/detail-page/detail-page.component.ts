@@ -19,7 +19,7 @@ export class DetailPageComponent implements OnInit {
     color: 'Red',
     price: 99.99,
     id: 0,
-    imageUrl: ''
+    imageUrl: 'images/Rose.jpg'
   };
 
   isLoading = false;
@@ -35,7 +35,10 @@ export class DetailPageComponent implements OnInit {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.flowerService.getFlower(+id).subscribe({
-        next: (flower) => this.flower = flower,
+        next: (flower) => {
+          this.flower = flower;
+          console.log('Loaded flower:', flower);
+        },
         error: (error) => console.error('Error loading flower:', error)
       });
     }
@@ -123,6 +126,59 @@ export class DetailPageComponent implements OnInit {
     });
   }
 
+  // ========== IMAGE HANDLING ==========
+
+  /**
+   * Constructs the full image URL for display
+   */
+  getImageUrl(imageUrl: string): string {
+    console.log('Original imageUrl:', imageUrl); // Debug log
+
+    if (!imageUrl) {
+      return 'assets/images/placeholder.jpg';
+    }
+
+    // If imageUrl already starts with 'assets/', return as is
+    if (imageUrl.startsWith('assets/')) {
+      console.log('Already has assets prefix:', imageUrl);
+      return imageUrl;
+    }
+
+    // If imageUrl starts with 'http' or 'https', it's an external URL
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      console.log('External URL:', imageUrl);
+      return imageUrl;
+    }
+
+    // If imageUrl starts with '/', remove it and prepend 'assets/'
+    if (imageUrl.startsWith('/')) {
+      const result = 'assets' + imageUrl;
+      console.log('Removed leading slash:', result);
+      return result;
+    }
+
+    // If imageUrl starts with 'images/', prepend 'assets/'
+    if (imageUrl.startsWith('images/')) {
+      const result = 'assets/' + imageUrl;
+      console.log('Added assets prefix:', result);
+      return result;
+    }
+
+    // Otherwise, assume it's just a filename and prepend 'assets/images/'
+    const result = 'assets/images/' + imageUrl;
+    console.log('Added full path:', result);
+    return result;
+  }
+
+  /**
+   * Handle image loading errors
+   */
+  onImageError(event: any): void {
+    console.warn('Failed to load image:', event.target.src);
+    // Set a fallback image
+    event.target.src = 'assets/images/placeholder.jpg';
+  }
+
   // ========== UTILITY FUNCTIONS ==========
 
   isAvailable(): boolean {
@@ -136,6 +192,4 @@ export class DetailPageComponent implements OnInit {
   getCurrentUserId(): number | null {
     return this.userService.getCurrentUserId();
   }
-
-
 }

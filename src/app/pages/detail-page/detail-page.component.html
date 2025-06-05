@@ -17,7 +17,12 @@
   <div class="detail-content">
     <!-- Flower Image -->
     <div class="flower-image-section">
-      <img [src]="'/assets' + flower.imageUrl" [alt]="flower.name" class="flower-image">
+      <!-- IMPORTANT: Using getImageUrl() method -->
+      <img [src]="getImageUrl(flower.imageUrl)"
+           [alt]="flower.name"
+           class="flower-image"
+           (error)="onImageError($event)"
+           loading="lazy">
 
       <!-- Availability Badge -->
       <div class="availability-overlay">
