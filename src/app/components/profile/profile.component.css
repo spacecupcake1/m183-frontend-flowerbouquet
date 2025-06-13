@@ -1,0 +1,591 @@
+/* Profile Component Styles */
+
+.profile-container {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* Profile Header */
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+}
+
+.user-avatar-large {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: white;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+.user-info {
+  flex-grow: 1;
+}
+
+.user-name {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.user-email {
+  font-size: 1.1rem;
+  margin: 0 0 1rem 0;
+  opacity: 0.9;
+}
+
+.user-roles {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.role-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.admin-badge {
+  background-color: rgba(255, 71, 87, 0.2);
+  border-color: #ff6b7a;
+  color: #ffcccb;
+}
+
+.moderator-badge {
+  background-color: rgba(255, 165, 2, 0.2);
+  border-color: #ffb733;
+  color: #ffd699;
+}
+
+.user-badge {
+  background-color: rgba(76, 175, 80, 0.2);
+  border-color: #81c784;
+  color: #c8e6c9;
+}
+
+/* Profile Content */
+.profile-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.profile-section {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  border: 1px solid #e9ecef;
+}
+
+.section-title {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  margin: 0;
+  padding: 1.5rem 2rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 1px solid #dee2e6;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Forms */
+.profile-form,
+.password-form {
+  padding: 2rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #495057;
+  font-size: 0.95rem;
+}
+
+.required {
+  color: #dc3545;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  background-color: #fff;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.form-control:read-only {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.form-control.is-invalid {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+.form-text {
+  font-size: 0.875rem;
+  color: #6c757d;
+  margin-top: 0.25rem;
+}
+
+.invalid-feedback {
+  color: #dc3545;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+/* Password Strength Meter */
+.password-strength {
+  margin-top: 0.75rem;
+}
+
+.strength-meter {
+  height: 6px;
+  background-color: #e9ecef;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.strength-bar {
+  height: 100%;
+  transition: all 0.3s ease;
+  border-radius: 3px;
+}
+
+.strength-weak {
+  background-color: #dc3545;
+}
+
+.strength-medium {
+  background-color: #ffc107;
+}
+
+.strength-good {
+  background-color: #fd7e14;
+}
+
+.strength-strong {
+  background-color: #28a745;
+}
+
+.strength-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6c757d;
+}
+
+/* Alerts */
+.alert {
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid transparent;
+}
+
+.alert-success {
+  background-color: #d1edff;
+  border-color: #b6d7ff;
+  color: #155724;
+}
+
+.alert-danger {
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
+  color: #721c24;
+}
+
+/* Buttons */
+.btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+  min-width: 120px;
+}
+
+.btn:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+  box-shadow: 0 2px 4px rgba(108, 117, 125, 0.2);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #545b62;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
+}
+
+.btn-warning {
+  background-color: #ffc107;
+  color: #212529;
+  box-shadow: 0 2px 4px rgba(255, 193, 7, 0.2);
+}
+
+.btn-warning:hover:not(:disabled) {
+  background-color: #e0a800;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: #007bff;
+  border: 2px solid #007bff;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  min-width: auto;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e9ecef;
+}
+
+/* Security Info */
+.security-info {
+  padding: 2rem;
+}
+
+.security-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.security-item:last-child {
+  border-bottom: none;
+}
+
+.security-label {
+  font-weight: 600;
+  color: #495057;
+}
+
+.security-value {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: #6c757d;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.status-badge.active {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-badge.inactive {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Admin Actions */
+.admin-actions {
+  padding: 2rem;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Icons (using pseudo-elements for basic icons) */
+.icon-user::before { content: "👤"; }
+.icon-lock::before { content: "🔒"; }
+.icon-shield::before { content: "🛡️"; }
+.icon-admin::before { content: "⚙️"; }
+.icon-save::before { content: "💾"; }
+.icon-reset::before { content: "🔄"; }
+.icon-key::before { content: "🔑"; }
+.icon-error::before { content: "❌"; }
+.icon-success::before { content: "✅"; }
+.icon-loading::before {
+  content: "⏳";
+  animation: spin 1s linear infinite;
+}
+.icon-admin-panel::before { content: "🎛️"; }
+.icon-users::before { content: "👥"; }
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .profile-container {
+    margin: 1rem auto;
+    padding: 0 0.5rem;
+  }
+
+  .profile-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+
+  .user-name {
+    font-size: 1.75rem;
+  }
+
+  .profile-form,
+  .password-form,
+  .security-info,
+  .admin-actions {
+    padding: 1.5rem;
+  }
+
+  .section-title {
+    padding: 1.25rem 1.5rem;
+    font-size: 1.1rem;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .security-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .admin-actions {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-header {
+    padding: 1rem;
+  }
+
+  .user-avatar-large {
+    width: 80px;
+    height: 80px;
+    font-size: 2rem;
+  }
+
+  .user-name {
+    font-size: 1.5rem;
+  }
+
+  .user-email {
+    font-size: 1rem;
+  }
+
+  .profile-form,
+  .password-form,
+  .security-info,
+  .admin-actions {
+    padding: 1rem;
+  }
+
+  .section-title {
+    padding: 1rem;
+    font-size: 1rem;
+  }
+
+  .form-control {
+    padding: 0.625rem 0.875rem;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .profile-container {
+    color: #f8f9fa;
+  }
+
+  .profile-section {
+    background: #343a40;
+    border-color: #495057;
+  }
+
+  .section-title {
+    background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+    color: #f8f9fa;
+    border-bottom-color: #495057;
+  }
+
+  .form-control {
+    background-color: #495057;
+    border-color: #6c757d;
+    color: #f8f9fa;
+  }
+
+  .form-control:read-only {
+    background-color: #6c757d;
+    color: #adb5bd;
+  }
+
+  .form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 3px rgba(128, 189, 255, 0.25);
+  }
+
+  .form-label {
+    color: #f8f9fa;
+  }
+
+  .form-text {
+    color: #adb5bd;
+  }
+
+  .strength-meter {
+    background-color: #6c757d;
+  }
+
+  .security-item {
+    border-bottom-color: #495057;
+  }
+
+  .security-label {
+    color: #f8f9fa;
+  }
+
+  .security-value {
+    color: #adb5bd;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .profile-section {
+    border: 2px solid #000;
+  }
+
+  .form-control {
+    border: 2px solid #000;
+  }
+
+  .btn {
+    border: 2px solid;
+  }
+
+  .btn-primary {
+    border-color: #000;
+  }
+
+  .btn-secondary {
+    border-color: #000;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .form-control,
+  .btn,
+  .strength-bar {
+    transition: none;
+  }
+
+  .btn:hover {
+    transform: none;
+  }
+
+  .icon-loading::before {
+    animation: none;
+  }
+}

@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AuthService } from 'src/app/service/auth.service';
 import { UserService } from 'src/app/service/user.service';
 import { ValidationService } from 'src/app/service/validation.service';
 
@@ -17,12 +18,16 @@ export class LoginComponent implements OnInit {
 
   constructor(
     private userService: UserService,
+    private authService: AuthService,
     private router: Router,
     private formBuilder: FormBuilder,
     private validationService: ValidationService
   ) {
-    this.loginForm = this.createLoginForm();
-  }
+      this.loginForm = this.formBuilder.group({
+        username: ['', [Validators.required, ValidationService.usernameValidator()]],
+        password: ['', [Validators.required, Validators.minLength(6)]]
+      });
+    }
 
   ngOnInit(): void {
     // Check if user is already logged in

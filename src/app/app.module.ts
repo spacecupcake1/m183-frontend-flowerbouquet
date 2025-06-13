@@ -47,10 +47,17 @@ import { UserService } from './service/user.service';
 import { ValidationService } from './service/validation.service';
 
 
+
 // Guards and Interceptors
 import { AdminGuard } from './service/admin.guard';
 import { AuthGuard } from './service/auth.guard';
+import { AuthInterceptor } from './service/auth.interceptor';
+import { AuthService } from './service/auth.service';
 import { SessionInterceptor } from './service/session.interceptor';
+import { AdminComponent } from './components/admin/admin.component';
+import { UnauthorizedComponent } from './components/unauthorized/unauthorized.component';
+import { ProfileComponent } from './components/profile/profile.component';
+import { NotFoundComponent } from './components/not-found/not-found.component';
 
 @NgModule({
   declarations: [
@@ -63,7 +70,11 @@ import { SessionInterceptor } from './service/session.interceptor';
     LoginComponent,
     CheckoutComponent,
     CustomicingComponent,
-    AdminFlowersComponent
+    AdminFlowersComponent,
+    AdminComponent,
+    UnauthorizedComponent,
+    ProfileComponent,
+    NotFoundComponent
   ],
   imports: [
     BrowserModule,
@@ -103,9 +114,18 @@ import { SessionInterceptor } from './service/session.interceptor';
     ValidationService,
     AuthGuard,
     AdminGuard,
+    UserService,
+    AuthService,
+    ValidationService,
+
     {
       provide: HTTP_INTERCEPTORS,
       useClass: SessionInterceptor,
+      multi: true
+    },
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: AuthInterceptor,
       multi: true
     }
   ],
