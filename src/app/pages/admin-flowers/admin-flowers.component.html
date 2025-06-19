@@ -3,13 +3,24 @@
   <div class="admin-header">
     <h1>Admin - Flower Management</h1>
     <div class="header-buttons">
-      <button (click)="goBack()">← Back to Main</button>
-      <button (click)="logout()">Logout</button>
+      <button class="btn btn-secondary" (click)="goBack()">← Back to Main</button>
+      <button class="btn btn-danger" (click)="logout()">Logout</button>
     </div>
   </div>
 
+  <!-- Debug Panel (Remove in production) -->
+  <div *ngIf="debugMode" class="debug-panel" style="background: #f8f9fa; padding: 15px; margin: 20px 0; border-radius: 5px; border-left: 4px solid #007bff;">
+    <h4>🐛 Debug Info</h4>
+    <p><strong>isCreating:</strong> {{ isCreating }}</p>
+    <p><strong>isEditing:</strong> {{ isEditing }}</p>
+    <p><strong>isSubmitting:</strong> {{ isSubmitting }}</p>
+    <p><strong>editingFlower:</strong> {{ editingFlower?.name || 'none' }}</p>
+    <p><strong>flowers.length:</strong> {{ flowers.length }}</p>
+    <button class="btn btn-sm btn-info" (click)="debugComponentState()">Log State</button>
+  </div>
+
   <!-- Stats Section -->
-  <div class="stats-section" *ngIf="stats">
+  <div class="stats-section" *ngIf="stats && !isCreating && !isEditing">
     <h2>Statistics</h2>
     <div class="stats-grid">
       <div class="stat-card">
@@ -28,24 +39,51 @@
   </div>
 
   <!-- Action Buttons -->
-  <div class="action-section">
-    <button class="btn btn-primary" (click)="startCreating()"
-            [disabled]="isEditing || isCreating || isSubmitting">
+  <div class="action-section" *ngIf="!isCreating && !isEditing">
+    <button class="btn btn-primary"
+            (click)="startCreating()"
+            [disabled]="isSubmitting || isLoading">
       + Create New Flower
     </button>
+    <button class="btn btn-info"
+            (click)="loadFlowers()"
+            [disabled]="isSubmitting || isLoading">
+      🔄 Refresh List
+    </button>
+  </div>
+
+  <!-- Loading Indicator -->
+  <div *ngIf="isLoading" class="loading-indicator" style="text-align: center; margin: 40px 0;">
+    <div class="spinner"></div>
+    <p>Loading...</p>
   </div>
 
   <!-- Submit Error Display -->
   <div *ngIf="submitError" class="error-message">
     <strong>Error:</strong> {{ submitError }}
+    <button class="btn btn-sm btn-secondary" (click)="clearErrors()" style="margin-left: 10px;">
+      ✕ Clear
+    </button>
   </div>
 
   <!-- Create/Edit Form -->
-  <div class="form-section" *ngIf="isCreating || isEditing">
+  <div class="form-section" *ngIf="(isCreating || isEditing) && !isLoading">
     <div class="form-container">
-      <h2>{{ isCreating ? 'Create New Flower' : 'Edit Flower' }}</h2>
+      <h2>
+        {{ isCreating ? 'Create New Flower' : 'Edit Flower: ' + (editingFlower?.name || '') }}
+      </h2>
 
-      <form [formGroup]="flowerForm" (ngSubmit)="isCreating ? createFlower() : updateFlower()" class="flower-form" novalidate>
+      <!-- Form Status Indicator -->
+      <div class="form-status" style="margin-bottom: 20px; padding: 10px; background: #e3f2fd; border-radius: 5px;">
+        <p><strong>Mode:</strong> {{ isCreating ? 'Creating' : 'Editing' }}</p>
+        <p><strong>Form Status:</strong> {{ flowerForm.valid ? '✅ Valid' : '❌ Invalid' }}</p>
+        <p *ngIf="editingFlower"><strong>Editing:</strong> {{ editingFlower.name }} (ID: {{ editingFlower.id }})</p>
+      </div>
+
+      <form [formGroup]="flowerForm"
+            (ngSubmit)="isCreating ? createFlower() : updateFlower()"
+            class="flower-form"
+            novalidate>
 
         <!-- Row 1: Name and Color -->
         <div class="form-row">
@@ -85,7 +123,8 @@
               [class.error-input]="hasError('price')"
               placeholder="Enter price"
               min="1"
-              max="9999">
+              max="9999"
+              step="0.01">
             <div *ngIf="hasError('price')" class="error">{{ getError('price') }}</div>
           </div>
 
@@ -142,10 +181,10 @@
             id="imageUrl"
             formControlName="imageUrl"
             [class.error-input]="hasError('imageUrl')"
-            placeholder="https://example.com/flower-image.jpg"
+            placeholder="https://example.com/flower-image.jpg or /images/flower.jpg"
             maxlength="500">
           <div class="input-help">
-            Enter a valid HTTPS URL for the flower image
+            Enter a valid URL for the flower image (https://...) or local path (/images/...)
           </div>
           <div *ngIf="hasError('imageUrl')" class="error">{{ getError('imageUrl') }}</div>
         </div>
@@ -158,34 +197,40 @@
             [disabled]="flowerForm.invalid || isSubmitting">
             <span *ngIf="isSubmitting">⏳ Processing...</span>
             <span *ngIf="!isSubmitting">
-              {{ isCreating ? 'Create Flower' : 'Update Flower' }}
+              {{ isCreating ? '✅ Create Flower' : '💾 Update Flower' }}
             </span>
           </button>
+
           <button
             type="button"
             class="btn btn-secondary"
             (click)="isCreating ? cancelCreate() : cancelEdit()"
             [disabled]="isSubmitting">
-            Cancel
+            ❌ Cancel
           </button>
         </div>
 
-        <!-- Form Status Debug (Remove in production) -->
-        <div class="form-debug" *ngIf="false">
-          <p><strong>Form Status:</strong> {{ flowerForm.status }}</p>
-          <p><strong>Form Valid:</strong> {{ flowerForm.valid }}</p>
-          <p><strong>Form Touched:</strong> {{ flowerForm.touched }}</p>
-          <p><strong>Form Dirty:</strong> {{ flowerForm.dirty }}</p>
+        <!-- Form Validation Summary -->
+        <div *ngIf="flowerForm.invalid && flowerForm.touched" class="validation-summary">
+          <h4>❌ Please fix the following errors:</h4>
+          <ul>
+            <li *ngIf="hasError('name')">Name: {{ getError('name') }}</li>
+            <li *ngIf="hasError('color')">Color: {{ getError('color') }}</li>
+            <li *ngIf="hasError('price')">Price: {{ getError('price') }}</li>
+            <li *ngIf="hasError('meaning')">Meaning: {{ getError('meaning') }}</li>
+            <li *ngIf="hasError('info')">Information: {{ getError('info') }}</li>
+            <li *ngIf="hasError('imageUrl')">Image URL: {{ getError('imageUrl') }}</li>
+          </ul>
         </div>
       </form>
     </div>
   </div>
 
   <!-- Flowers List -->
-  <div class="flowers-section">
+  <div class="flowers-section" *ngIf="!isCreating && !isEditing && !isLoading">
     <h2>All Flowers ({{ flowers.length }})</h2>
 
-    <div class="flowers-table-container">
+    <div class="flowers-table-container" *ngIf="flowers.length > 0">
       <table class="flowers-table">
         <thead>
           <tr>
@@ -199,11 +244,14 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let flower of flowers">
+          <tr *ngFor="let flower of flowers; trackBy: trackByFlowerId">
             <td>{{ flower.id }}</td>
             <td>
-              <img [src]="'/assets' + flower.imageUrl" [alt]="flower.name" class="flower-thumbnail"
-                   (error)="onImageError($event)">
+              <img [src]="getImageUrl(flower.imageUrl)"
+                   [alt]="flower.name"
+                   class="flower-thumbnail"
+                   (error)="onImageError($event)"
+                   style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;">
             </td>
             <td>{{ flower.name }}</td>
             <td>{{ flower.color }}</td>
@@ -216,18 +264,20 @@
               </span>
             </td>
             <td>
-              <button class="btn btn-sm btn-primary"
-                      (click)="startEditing(flower)"
-                      [disabled]="isEditing || isCreating || isSubmitting"
-                      title="Edit Flower">
-                ✏️ Edit
-              </button>
-              <button class="btn btn-sm btn-danger"
-                      (click)="deleteFlower(flower)"
-                      [disabled]="isEditing || isCreating || isSubmitting"
-                      title="Delete Flower">
-                🗑️ Delete
-              </button>
+              <div class="action-buttons">
+                <button class="btn btn-sm btn-primary"
+                        (click)="startEditing(flower)"
+                        [disabled]="isSubmitting"
+                        title="Edit Flower">
+                  ✏️ Edit
+                </button>
+                <button class="btn btn-sm btn-danger"
+                        (click)="deleteFlower(flower)"
+                        [disabled]="isSubmitting"
+                        title="Delete Flower">
+                  🗑️ Delete
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -235,12 +285,18 @@
     </div>
 
     <div *ngIf="flowers.length === 0" class="no-flowers">
-      <p>No flowers found. Create your first flower!</p>
+      <div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 10px; margin: 20px 0;">
+        <h3>🌸 No flowers found</h3>
+        <p>Create your first flower to get started!</p>
+        <button class="btn btn-primary" (click)="startCreating()">
+          + Create First Flower
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- Security Notice -->
-  <div class="security-notice">
+  <div class="security-notice" *ngIf="!isCreating && !isEditing">
     <h4>🔒 Security Information</h4>
     <p>All input is validated and sanitized to prevent security vulnerabilities. Only safe content is allowed.</p>
   </div>

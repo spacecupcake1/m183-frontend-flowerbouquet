@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Flower } from 'src/app/data/flower';
 import { User } from 'src/app/data/user';
 import { FlowerService, FlowerStats } from 'src/app/service/flower.service';
@@ -18,34 +18,63 @@ export class AdminFlowersComponent implements OnInit {
   isEditing = false;
   isCreating = false;
   isSubmitting = false;
+  isLoading = false;
 
   // Reactive Form
   flowerForm: FormGroup;
+  editingFlower: Flower | null = null;
 
   // Error handling
   submitError: string = '';
   validationErrors: { [key: string]: string } = {};
 
+  // Debug flag - set to true for debugging
+  debugMode = true;
+
   constructor(
     private flowerService: FlowerService,
     private userService: UserService,
     private router: Router,
+    private route: ActivatedRoute,
     private formBuilder: FormBuilder,
-    private validationService: ValidationService
+    private validationService: ValidationService,
+    private cdr: ChangeDetectorRef  // Add ChangeDetectorRef for manual change detection
   ) {
     this.flowerForm = this.createFlowerForm();
   }
 
   ngOnInit(): void {
+    console.log('AdminFlowersComponent ngOnInit called');
+
     // Check if user is admin
     if (!this.userService.isAdmin()) {
+      console.warn('User is not admin, redirecting to main');
       alert('Access denied. Admin privileges required.');
       this.router.navigate(['/main']);
       return;
     }
 
-    this.loadFlowers();
+    // Check for edit parameter in route
+    this.route.queryParams.subscribe(params => {
+      if (params['edit']) {
+        const flowerId = Number(params['edit']);
+        console.log('Edit parameter found:', flowerId);
+        // Load flowers first, then start editing
+        this.loadFlowers().then(() => {
+          this.startEditingById(flowerId);
+        });
+      } else {
+        this.loadFlowers();
+      }
+    });
+
     this.loadStats();
+  }
+
+  private debugLog(message: string, data?: any): void {
+    if (this.debugMode) {
+      console.log(`[AdminFlowers] ${message}`, data || '');
+    }
   }
 
   /**
@@ -84,8 +113,7 @@ export class AdminFlowersComponent implements OnInit {
       name: ['', [
         Validators.required,
         Validators.minLength(2),
-        Validators.maxLength(100),
-        ValidationService.flowerNameValidator()
+        Validators.maxLength(100)
       ]],
       meaning: ['', [
         Validators.required,
@@ -104,38 +132,54 @@ export class AdminFlowersComponent implements OnInit {
       color: ['', [
         Validators.required,
         Validators.minLength(2),
-        Validators.maxLength(100),
-        ValidationService.nameValidator()
+        Validators.maxLength(100)
       ]],
       price: [null, [
         Validators.required,
-        ValidationService.priceRangeValidator(1, 9999)
+        Validators.min(1),
+        Validators.max(9999)
       ]],
       imageUrl: ['', [
         Validators.required,
         Validators.maxLength(500),
-        ValidationService.urlValidator()
+        Validators.pattern(/^https?:\/\/.+/)
       ]]
     });
   }
 
   // ========== DATA LOADING ==========
 
-  loadFlowers(): void {
-    this.flowerService.getFlowers().subscribe({
-      next: (data) => this.flowers = data,
-      error: (error) => {
-        console.error('Error loading flowers:', error);
-        this.handleError('Failed to load flowers', error);
-      }
+  loadFlowers(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.debugLog('Loading flowers...');
+      this.isLoading = true;
+
+      this.flowerService.getFlowers().subscribe({
+        next: (data) => {
+          this.debugLog('Flowers loaded successfully', data);
+          this.flowers = data;
+          this.isLoading = false;
+          resolve();
+        },
+        error: (error) => {
+          console.error('Error loading flowers:', error);
+          this.handleError('Failed to load flowers', error);
+          this.isLoading = false;
+          reject(error);
+        }
+      });
     });
   }
 
   loadStats(): void {
     const userId = this.userService.getCurrentUserId();
     if (userId) {
+      this.debugLog('Loading stats for user:', userId);
       this.flowerService.getFlowerStats(userId).subscribe({
-        next: (data) => this.stats = data,
+        next: (data) => {
+          this.debugLog('Stats loaded successfully', data);
+          this.stats = data;
+        },
         error: (error) => {
           console.error('Error loading stats:', error);
           this.handleError('Failed to load statistics', error);
@@ -147,26 +191,43 @@ export class AdminFlowersComponent implements OnInit {
   // ========== CREATE OPERATIONS ==========
 
   startCreating(): void {
+    this.debugLog('Starting creation mode');
     this.isCreating = true;
     this.isEditing = false;
+    this.editingFlower = null;
     this.resetForm();
     this.clearErrors();
+
+    // Force change detection
+    this.cdr.detectChanges();
+
+    this.debugLog('Creation mode state', {
+      isCreating: this.isCreating,
+      isEditing: this.isEditing
+    });
   }
 
   cancelCreate(): void {
+    this.debugLog('Canceling creation');
     this.isCreating = false;
+    this.editingFlower = null;
     this.resetForm();
     this.clearErrors();
+    this.cdr.detectChanges();
   }
 
   createFlower(): void {
+    this.debugLog('Creating flower...');
+
     if (!this.validateForm()) {
+      this.debugLog('Form validation failed');
       return;
     }
 
     const userId = this.userService.getCurrentUserId();
     if (!userId) {
       this.submitError = 'User not logged in';
+      this.debugLog('User not logged in');
       return;
     }
 
@@ -175,10 +236,11 @@ export class AdminFlowersComponent implements OnInit {
 
     // Sanitize form data before sending
     const flowerData = this.sanitizeFormData(this.flowerForm.value);
+    this.debugLog('Sanitized flower data', flowerData);
 
     this.flowerService.createFlower(flowerData, userId).subscribe({
       next: (createdFlower) => {
-        console.log('Flower created successfully:', createdFlower);
+        this.debugLog('Flower created successfully', createdFlower);
         this.loadFlowers();
         this.loadStats();
         this.cancelCreate();
@@ -190,6 +252,7 @@ export class AdminFlowersComponent implements OnInit {
       },
       complete: () => {
         this.isSubmitting = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -197,32 +260,60 @@ export class AdminFlowersComponent implements OnInit {
   // ========== UPDATE OPERATIONS ==========
 
   startEditing(flower: Flower): void {
+    this.debugLog('Starting edit mode for flower', flower);
     this.isEditing = true;
     this.isCreating = false;
+    this.editingFlower = flower;
     this.populateForm(flower);
     this.clearErrors();
+
+    // Force change detection
+    this.cdr.detectChanges();
+
+    this.debugLog('Edit mode state', {
+      isCreating: this.isCreating,
+      isEditing: this.isEditing,
+      editingFlower: this.editingFlower
+    });
+  }
+
+  startEditingById(flowerId: number): void {
+    const flower = this.flowers.find(f => f.id === flowerId);
+    if (flower) {
+      this.startEditing(flower);
+    } else {
+      this.debugLog('Flower not found for editing:', flowerId);
+    }
   }
 
   cancelEdit(): void {
+    this.debugLog('Canceling edit');
     this.isEditing = false;
+    this.editingFlower = null;
     this.resetForm();
     this.clearErrors();
+    this.cdr.detectChanges();
   }
 
   updateFlower(): void {
+    this.debugLog('Updating flower...');
+
     if (!this.validateForm()) {
+      this.debugLog('Form validation failed');
       return;
     }
 
     const userId = this.userService.getCurrentUserId();
     if (!userId) {
       this.submitError = 'User not logged in';
+      this.debugLog('User not logged in');
       return;
     }
 
     const flowerId = this.flowerForm.get('id')?.value;
     if (!flowerId) {
       this.submitError = 'Invalid flower ID';
+      this.debugLog('Invalid flower ID');
       return;
     }
 
@@ -231,10 +322,11 @@ export class AdminFlowersComponent implements OnInit {
 
     // Sanitize form data before sending
     const flowerData = this.sanitizeFormData(this.flowerForm.value);
+    this.debugLog('Sanitized flower data for update', flowerData);
 
     this.flowerService.updateFlower(flowerId, flowerData, userId).subscribe({
       next: (updatedFlower) => {
-        console.log('Flower updated successfully:', updatedFlower);
+        this.debugLog('Flower updated successfully', updatedFlower);
         this.loadFlowers();
         this.loadStats();
         this.cancelEdit();
@@ -246,6 +338,7 @@ export class AdminFlowersComponent implements OnInit {
       },
       complete: () => {
         this.isSubmitting = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -263,9 +356,11 @@ export class AdminFlowersComponent implements OnInit {
       return;
     }
 
+    this.debugLog('Deleting flower', flower);
+
     this.flowerService.deleteFlower(flower.id, userId).subscribe({
       next: (response) => {
-        console.log('Flower deleted successfully:', response);
+        this.debugLog('Flower deleted successfully', response);
         this.loadFlowers();
         this.loadStats();
         this.showSuccessMessage('Flower deleted successfully!');
@@ -285,21 +380,8 @@ export class AdminFlowersComponent implements OnInit {
 
     if (this.flowerForm.invalid) {
       this.submitError = 'Please correct the errors below';
+      this.debugLog('Form is invalid', this.flowerForm.errors);
       return false;
-    }
-
-    // Additional security validation
-    const formData = this.flowerForm.value;
-
-    for (const [key, value] of Object.entries(formData)) {
-      if (typeof value === 'string') {
-        const validation = this.validationService.validateAndSanitize(value);
-        if (!validation.isValid) {
-          this.validationErrors[key] = validation.error || 'Invalid input';
-          this.submitError = 'Security validation failed';
-          return false;
-        }
-      }
     }
 
     return true;
@@ -311,9 +393,21 @@ export class AdminFlowersComponent implements OnInit {
     Object.keys(this.flowerForm.controls).forEach(key => {
       const control = this.flowerForm.get(key);
       if (control && control.invalid && (control.dirty || control.touched)) {
-        this.validationErrors[key] = this.validationService.getErrorMessage(control.errors || {});
+        this.validationErrors[key] = this.getControlErrorMessage(control);
       }
     });
+  }
+
+  private getControlErrorMessage(control: AbstractControl): string {
+    if (control.errors) {
+      if (control.errors['required']) return 'This field is required';
+      if (control.errors['minlength']) return `Minimum length is ${control.errors['minlength'].requiredLength}`;
+      if (control.errors['maxlength']) return `Maximum length is ${control.errors['maxlength'].requiredLength}`;
+      if (control.errors['min']) return `Minimum value is ${control.errors['min'].min}`;
+      if (control.errors['max']) return `Maximum value is ${control.errors['max'].max}`;
+      if (control.errors['pattern']) return 'Invalid format';
+    }
+    return 'Invalid input';
   }
 
   hasError(field: string): boolean {
@@ -328,7 +422,7 @@ export class AdminFlowersComponent implements OnInit {
 
     const control = this.flowerForm.get(field);
     if (control && control.errors) {
-      return this.validationService.getErrorMessage(control.errors);
+      return this.getControlErrorMessage(control);
     }
 
     return '';
@@ -337,6 +431,7 @@ export class AdminFlowersComponent implements OnInit {
   // ========== FORM HELPERS ==========
 
   private resetForm(): void {
+    this.debugLog('Resetting form');
     this.flowerForm.reset();
     this.flowerForm.patchValue({
       availablity: 'Available' // Set default value
@@ -344,6 +439,7 @@ export class AdminFlowersComponent implements OnInit {
   }
 
   private populateForm(flower: Flower): void {
+    this.debugLog('Populating form with flower data', flower);
     this.flowerForm.patchValue({
       id: flower.id,
       name: flower.name,
@@ -359,18 +455,18 @@ export class AdminFlowersComponent implements OnInit {
   private sanitizeFormData(formData: any): Flower {
     const sanitized = { ...formData };
 
-    // Sanitize string fields
+    // Basic sanitization
     if (sanitized.name) {
-      sanitized.name = this.validationService.sanitizeInput(sanitized.name).trim();
+      sanitized.name = sanitized.name.trim();
     }
     if (sanitized.meaning) {
-      sanitized.meaning = this.validationService.sanitizeInput(sanitized.meaning).trim();
+      sanitized.meaning = sanitized.meaning.trim();
     }
     if (sanitized.info) {
-      sanitized.info = this.validationService.sanitizeInput(sanitized.info).trim();
+      sanitized.info = sanitized.info.trim();
     }
     if (sanitized.color) {
-      sanitized.color = this.validationService.sanitizeInput(sanitized.color).trim();
+      sanitized.color = sanitized.color.trim();
     }
     if (sanitized.imageUrl) {
       sanitized.imageUrl = sanitized.imageUrl.trim();
@@ -393,9 +489,13 @@ export class AdminFlowersComponent implements OnInit {
       // Handle network or other errors
       this.submitError = `${message}: ${error.message || 'Unknown error'}`;
     }
+    this.debugLog('Error handled', { message, error, submitError: this.submitError });
   }
 
-  private clearErrors(): void {
+  /**
+   * Clear errors (accessible from template)
+   */
+  clearErrors(): void {
     this.submitError = '';
     this.validationErrors = {};
   }
@@ -466,5 +566,71 @@ export class AdminFlowersComponent implements OnInit {
 
   get imageUrlControl(): AbstractControl | null {
     return this.flowerForm.get('imageUrl');
+  }
+
+  // ========== HELPER METHODS ==========
+
+  /**
+   * Track by function for flower list
+   */
+  trackByFlowerId(index: number, flower: Flower): number {
+    return flower.id;
+  }
+
+  /**
+   * Get proper image URL for display
+   */
+  getImageUrl(imageUrl: string): string {
+    if (!imageUrl) {
+      return '/assets/images/placeholder.jpg';
+    }
+
+    // If imageUrl already starts with 'assets/', return as is
+    if (imageUrl.startsWith('assets/')) {
+      return '/' + imageUrl;
+    }
+
+    // If imageUrl starts with 'http' or 'https', it's an external URL
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+
+    // If imageUrl starts with '/', return as is (absolute path)
+    if (imageUrl.startsWith('/')) {
+      return imageUrl;
+    }
+
+    // If imageUrl starts with 'images/', prepend '/assets/'
+    if (imageUrl.startsWith('images/')) {
+      return '/assets/' + imageUrl;
+    }
+
+    // Otherwise, assume it's just a filename and prepend '/assets/images/'
+    return '/assets/images/' + imageUrl;
+  }
+
+  // ========== DEBUG METHODS ==========
+
+  /**
+   * Debug method to check component state
+   */
+  debugComponentState(): void {
+    console.log('=== Component State Debug ===');
+    console.log('isCreating:', this.isCreating);
+    console.log('isEditing:', this.isEditing);
+    console.log('isSubmitting:', this.isSubmitting);
+    console.log('editingFlower:', this.editingFlower);
+    console.log('flowers count:', this.flowers.length);
+    console.log('form valid:', this.flowerForm.valid);
+    console.log('form value:', this.flowerForm.value);
+    console.log('===============================');
+  }
+
+  /**
+   * Toggle debug mode
+   */
+  toggleDebugMode(): void {
+    this.debugMode = !this.debugMode;
+    this.debugLog('Debug mode toggled', this.debugMode);
   }
 }
