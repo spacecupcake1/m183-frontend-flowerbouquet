@@ -19,8 +19,9 @@ export class ValidationService {
 
   // Patterns for detecting potentially malicious content
   private static readonly SQL_INJECTION_PATTERN = /(?:union|select|insert|update|delete|drop|create|alter|exec|execute|script)/i;
-  private static readonly XSS_PATTERN = /<script|<\/script|javascript:|vbscript:|onload=|onerror=|onclick=|onmouseover=|<iframe|<\/iframe/i;
   private static readonly HTML_TAG_PATTERN = /<[^>]+>/g;
+  private static readonly XSS_PATTERN = /<script|javascript:|on\w+\s*=|<iframe|<object|<embed/i;
+  private static readonly HTML_PATTERN = /<[^>]*>/g;
 
   // Valid patterns for different input types
   private static readonly VALID_USERNAME_PATTERN = /^[a-zA-Z0-9_-]{3,50}$/;
@@ -28,6 +29,71 @@ export class ValidationService {
   private static readonly VALID_EMAIL_PATTERN = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
   constructor() { }
+
+  /**
+   * Sanitize input to prevent XSS attacks
+   */
+  sanitizeInput(input: string): string {
+    if (!input) return input;
+
+    // Remove HTML tags
+    let sanitized = input.replace(ValidationService.HTML_PATTERN, '');
+
+    // Remove potential script injections
+    sanitized = sanitized.replace(/javascript:/gi, '');
+    sanitized = sanitized.replace(/on\w+\s*=/gi, '');
+
+    // Encode special characters
+    sanitized = this.htmlEncode(sanitized);
+
+    return sanitized;
+  }
+
+  /**
+   * HTML encode special characters
+   */
+  private htmlEncode(input: string): string {
+    const div = document.createElement('div');
+    div.textContent = input;
+    return div.innerHTML;
+  }
+
+  /**
+   * Validator for XSS prevention
+   */
+  static xssValidator(): ValidatorFn {
+    return (control: AbstractControl): {[key: string]: any} | null => {
+      if (!control.value) return null;
+
+      if (ValidationService.XSS_PATTERN.test(control.value)) {
+        return { 'xss': { value: control.value } };
+      }
+
+      return null;
+    };
+  }
+
+  /**
+   * Flower name validator with XSS protection
+   */
+  static flowerNameValidator(): ValidatorFn {
+    return (control: AbstractControl): {[key: string]: any} | null => {
+      if (!control.value) return null;
+
+      // Check for XSS patterns
+      if (ValidationService.XSS_PATTERN.test(control.value)) {
+        return { 'xss': { value: control.value } };
+      }
+
+      // Check for valid flower name pattern
+      const namePattern = /^[a-zA-Z0-9\s\-'\.]+$/;
+      if (!namePattern.test(control.value)) {
+        return { 'invalidName': { value: control.value } };
+      }
+
+      return null;
+    };
+  }
 
   /**
    * Validates and sanitizes input for security threats.
@@ -51,33 +117,6 @@ export class ValidationService {
     const sanitized = this.sanitizeInput(input);
 
     return { isValid: true, sanitized, error: undefined };
-  }
-
-  /**
-   * Sanitizes input by removing dangerous content.
-   */
-  sanitizeInput(input: string): string {
-    if (!input) return '';
-
-    // Remove HTML tags
-    let sanitized = input.replace(ValidationService.HTML_TAG_PATTERN, '');
-
-    // HTML encode dangerous characters
-    sanitized = this.htmlEncode(sanitized);
-
-    // Trim whitespace
-    sanitized = sanitized.trim();
-
-    return sanitized;
-  }
-
-  /**
-   * HTML encodes dangerous characters to prevent XSS.
-   */
-  private htmlEncode(input: string): string {
-    const div = document.createElement('div');
-    div.textContent = input;
-    return div.innerHTML;
   }
 
   /**
@@ -319,41 +358,6 @@ export class ValidationService {
     ];
 
     return !dangerousPatterns.some(pattern => pattern.test(filename));
-  }
-
-  /**
-   * Validator for flower names
-   */
-  static flowerNameValidator(): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value) {
-        return null; // Don't validate empty values
-      }
-
-      const value = control.value.toString().trim();
-
-      // Flower name validation rules
-      if (value.length < 2) {
-        return { flowerName: { message: 'Flower name must be at least 2 characters long' } };
-      }
-
-      if (value.length > 100) {
-        return { flowerName: { message: 'Flower name cannot exceed 100 characters' } };
-      }
-
-      // Allow letters, numbers, spaces, hyphens, and common flower name characters
-      const flowerNamePattern = /^[a-zA-Z0-9\s\-'"\(\)\&\.]+$/;
-      if (!flowerNamePattern.test(value)) {
-        return { flowerName: { message: 'Flower name contains invalid characters' } };
-      }
-
-      // Check for consecutive spaces or hyphens
-      if (/[\s\-]{2,}/.test(value)) {
-        return { flowerName: { message: 'Flower name cannot contain consecutive spaces or hyphens' } };
-      }
-
-      return null;
-    };
   }
 
   /**

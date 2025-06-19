@@ -1,9 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, SecurityContext } from '@angular/core';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Flower } from 'src/app/data/flower';
 import { User } from 'src/app/data/user';
 import { FlowerService } from 'src/app/service/flower.service';
 import { UserService } from 'src/app/service/user.service';
+
 
 @Component({
   selector: 'app-detail-page',
@@ -28,8 +30,13 @@ export class DetailPageComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private flowerService: FlowerService,
-    private userService: UserService
+    private userService: UserService,
+    private sanitizer: DomSanitizer
   ) { }
+
+  getSanitizedContent(content: string): SafeHtml {
+    return this.sanitizer.sanitize(SecurityContext.HTML, content) || '';
+  }
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
