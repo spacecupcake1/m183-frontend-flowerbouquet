@@ -32,6 +32,12 @@ export interface FlowerSearchParams {
   maxPrice?: number;
 }
 
+export interface CartItem {
+  flower: Flower;
+  quantity: number;
+  addedAt: Date;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -181,15 +187,172 @@ export class FlowerService {
     return this.getFlowerById(id);
   }
 
-  getTempFlowers(): Observable<Flower[]> {
-    return this.getAllFlowers();
-  }
-
+   /**
+   * Add flower to cart (localStorage-based)
+   */
   addFlowerToTemp(flower: Flower): Observable<any> {
     return new Observable(observer => {
-      observer.next({ success: true, message: 'Added to cart' });
-      observer.complete();
+      try {
+        const cartItems = this.getCartItemsFromStorage();
+
+        // Check if flower already exists in cart
+        const existingItemIndex = cartItems.findIndex(item => item.flower.id === flower.id);
+
+        if (existingItemIndex >= 0) {
+          // Increase quantity if already in cart
+          cartItems[existingItemIndex].quantity += 1;
+        } else {
+          // Add new item to cart
+          cartItems.push({
+            flower: flower,
+            quantity: 1,
+            addedAt: new Date()
+          });
+        }
+
+        // Save to localStorage
+        localStorage.setItem('flowerCart', JSON.stringify(cartItems));
+
+        observer.next({
+          success: true,
+          message: `${flower.name} added to your bouquet!`,
+          cartSize: cartItems.length
+        });
+        observer.complete();
+      } catch (error) {
+        observer.error({ success: false, message: 'Failed to add flower to bouquet' });
+      }
     });
+  }
+
+  /**
+   * Get flowers from cart (localStorage-based)
+   */
+  getTempFlowers(): Observable<Flower[]> {
+    return new Observable(observer => {
+      try {
+        const cartItems = this.getCartItemsFromStorage();
+        const flowers = cartItems.map(item => item.flower);
+        observer.next(flowers);
+        observer.complete();
+      } catch (error) {
+        observer.error(error);
+      }
+    });
+  }
+
+  /**
+   * Get cart items with quantities
+   */
+  getCartItems(): Observable<CartItem[]> {
+    return new Observable(observer => {
+      try {
+        const cartItems = this.getCartItemsFromStorage();
+        observer.next(cartItems);
+        observer.complete();
+      } catch (error) {
+        observer.error(error);
+      }
+    });
+  }
+
+  /**
+   * Update quantity of item in cart
+   */
+  updateCartItemQuantity(flowerId: number, quantity: number): Observable<any> {
+    return new Observable(observer => {
+      try {
+        const cartItems = this.getCartItemsFromStorage();
+        const itemIndex = cartItems.findIndex(item => item.flower.id === flowerId);
+
+        if (itemIndex >= 0) {
+          if (quantity <= 0) {
+            // Remove item if quantity is 0 or negative
+            cartItems.splice(itemIndex, 1);
+          } else {
+            cartItems[itemIndex].quantity = quantity;
+          }
+
+          localStorage.setItem('flowerCart', JSON.stringify(cartItems));
+          observer.next({ success: true, message: 'Cart updated' });
+        } else {
+          observer.error({ success: false, message: 'Item not found in cart' });
+        }
+        observer.complete();
+      } catch (error) {
+        observer.error({ success: false, message: 'Failed to update cart' });
+      }
+    });
+  }
+
+  /**
+   * Remove item from cart
+   */
+  removeFromCart(flowerId: number): Observable<any> {
+    return new Observable(observer => {
+      try {
+        const cartItems = this.getCartItemsFromStorage();
+        const filteredItems = cartItems.filter(item => item.flower.id !== flowerId);
+
+        localStorage.setItem('flowerCart', JSON.stringify(filteredItems));
+        observer.next({ success: true, message: 'Item removed from cart' });
+        observer.complete();
+      } catch (error) {
+        observer.error({ success: false, message: 'Failed to remove item' });
+      }
+    });
+  }
+
+  /**
+   * Clear entire cart
+   */
+  clearCart(): Observable<any> {
+    return new Observable(observer => {
+      try {
+        localStorage.removeItem('flowerCart');
+        observer.next({ success: true, message: 'Cart cleared' });
+        observer.complete();
+      } catch (error) {
+        observer.error({ success: false, message: 'Failed to clear cart' });
+      }
+    });
+  }
+
+  /**
+   * Get cart size
+   */
+  getCartSize(): number {
+    const cartItems = this.getCartItemsFromStorage();
+    return cartItems.reduce((total, item) => total + item.quantity, 0);
+  }
+
+  /**
+   * Get total cart price
+   */
+  getCartTotal(): number {
+    const cartItems = this.getCartItemsFromStorage();
+    return cartItems.reduce((total, item) => total + (item.flower.price * item.quantity), 0);
+  }
+
+  /**
+   * Private helper method to get cart items from localStorage
+   */
+  private getCartItemsFromStorage(): CartItem[] {
+    try {
+      const cartData = localStorage.getItem('flowerCart');
+      if (cartData) {
+        const items = JSON.parse(cartData);
+        // Convert date strings back to Date objects
+        return items.map((item: any) => ({
+          ...item,
+          addedAt: new Date(item.addedAt)
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.error('Error reading cart from localStorage:', error);
+      return [];
+    }
   }
 
   getFlowerStats(userId?: number): Observable<any> {

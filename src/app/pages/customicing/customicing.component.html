@@ -1,16 +1,78 @@
-<h1>Bouquet Customizing</h1>
-<p>Adjust the quantity of each flower in your bouquet:</p>
-<div class="flowers-container">
-  <div class="flowers-card" *ngFor="let item of cartItems">
-    <div class="flower-info">
-      <!-- <img [src]="item.flower.imageUrl" alt="{{ item.flower.name }}"> -->
-      <p>{{ item.flower.name }}</p>
+<!-- ... same header and loading/error markup ... -->
+
+<!-- Cart summary -->
+<div class="cart-summary">
+  <div class="summary-item">
+    <span class="label">Items in bouquet:</span>
+    <span class="value">{{ cartItems.length }} types</span>
+  </div>
+  <div class="summary-item">
+    <span class="label">Total flowers:</span>
+    <span class="value">{{ getTotalQuantity() }}</span>
+  </div>
+  <div class="summary-item total">
+    <span class="label">Total price:</span>
+    <span class="value">€{{ totalPrice.toFixed(2) }}</span>
+  </div>
+</div>
+
+<!-- Cart items list -->
+<div class="cart-items">
+  <div class="cart-item" *ngFor="let item of cartItems; trackBy: trackByFlowerId">
+    <div class="item-image">
+      <img
+        [src]="getImageUrl(item.flower.imageUrl)"
+        [alt]="item.flower.name"
+        (error)="onImageError($event)">
     </div>
+
+    <div class="item-details">
+      <h3>{{ item.flower.name }}</h3>
+      <p class="item-color">Color: {{ item.flower.color }}</p>
+      <p class="item-price">€{{ item.flower.price.toFixed(2) }} each</p>
+      <p class="item-subtotal">
+        Subtotal: €{{ getItemSubtotal(item).toFixed(2) }}
+      </p>
+    </div>
+
     <div class="quantity-controls">
-      <button (click)="decreaseQuantity(item)">-</button>
-      <span>{{ item.quantity }}</span>
-      <button (click)="increaseQuantity(item)">+</button>
+      <label>Quantity:</label>
+      <div class="quantity-input">
+        <button
+          class="btn btn-quantity"
+          (click)="decreaseQuantity(item)"
+          [disabled]="item.quantity <= 1">
+          -
+        </button>
+        <span class="quantity-display">{{ item.quantity }}</span>
+        <button
+          class="btn btn-quantity"
+          (click)="increaseQuantity(item)">
+          +
+        </button>
+      </div>
+    </div>
+
+    <div class="item-actions">
+      <button
+        class="btn btn-danger btn-sm"
+        (click)="removeItem(item)"
+        title="Remove from bouquet">
+        🗑️ Remove
+      </button>
     </div>
   </div>
-  <button class="checkout-btn" (click)="checkout()">Checkout</button>
+</div>
+
+<!-- Action buttons -->
+<div class="cart-actions">
+  <button class="btn btn-secondary" (click)="continueShopping()">
+    ← Continue Shopping
+  </button>
+  <button class="btn btn-warning" (click)="clearCart()">
+    🗑️ Clear Bouquet
+  </button>
+  <button class="btn btn-primary btn-large" (click)="checkout()">
+    Proceed to Checkout →
+  </button>
 </div>
