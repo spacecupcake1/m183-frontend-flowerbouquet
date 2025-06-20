@@ -42,22 +42,24 @@ import { MainComponent } from './pages/main/main.component';
 import { RegisterComponent } from './pages/register/register.component';
 
 // Services
+import { AuthService } from './service/auth.service';
 import { FlowerService } from './service/flower.service';
+import { PermissionService } from './service/permission.service'; // ADD THIS
 import { UserService } from './service/user.service';
 import { ValidationService } from './service/validation.service';
 
-
-
 // Guards and Interceptors
-import { AdminGuard } from './service/admin.guard';
-import { AuthGuard } from './service/auth.guard';
-import { AuthInterceptor } from './service/auth.interceptor';
-import { AuthService } from './service/auth.service';
-import { SessionInterceptor } from './service/session.interceptor';
 import { AdminComponent } from './components/admin/admin.component';
-import { UnauthorizedComponent } from './components/unauthorized/unauthorized.component';
-import { ProfileComponent } from './components/profile/profile.component';
 import { NotFoundComponent } from './components/not-found/not-found.component';
+import { ProfileComponent } from './components/profile/profile.component';
+import { UnauthorizedComponent } from './components/unauthorized/unauthorized.component';
+import { AdminGuard } from './guards/admin.guard';
+import { AuthGuard } from './guards/auth.guard';
+import { AuthInterceptor } from './service/auth.interceptor';
+import { SessionInterceptor } from './service/session.interceptor';
+
+// DIRECTIVES - ADD THESE
+import { RoleBasedDisplayDirective } from './directives/role-based-display.directive';
 
 @NgModule({
   declarations: [
@@ -74,7 +76,10 @@ import { NotFoundComponent } from './components/not-found/not-found.component';
     AdminComponent,
     UnauthorizedComponent,
     ProfileComponent,
-    NotFoundComponent
+    NotFoundComponent,
+
+    // ADD MISSING DIRECTIVES
+    RoleBasedDisplayDirective
   ],
   imports: [
     BrowserModule,
@@ -112,11 +117,10 @@ import { NotFoundComponent } from './components/not-found/not-found.component';
     FlowerService,
     UserService,
     ValidationService,
+    AuthService,
+    PermissionService, // ADD THIS
     AuthGuard,
     AdminGuard,
-    UserService,
-    AuthService,
-    ValidationService,
 
     {
       provide: HTTP_INTERCEPTORS,

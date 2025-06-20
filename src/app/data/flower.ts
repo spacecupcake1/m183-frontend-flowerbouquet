@@ -1,10 +1,25 @@
-export class Flower {
-  public id!: number;
-  public name = '';
-  public meaning= '';
-  public availablity= '';
-  public info= '';
-  public color= '';
-  public price= 0;
-  public imageUrl = '';
+export interface Flower {
+  id?: number;
+  name: string;
+  meaning: string;
+  availablity: string; // Keep original spelling for existing data
+  info: string;
+  color: string;
+  price: number;
+  imageUrl: string;
+}
+
+export interface FlowerCreateRequest {
+  name: string;
+  meaning: string;
+  availability: string; // Correct spelling for API
+  info: string;
+  color: string;
+  price: number;
+  imageUrl: string;
+}
+
+export interface CartItem {
+  flower: Flower;
+  quantity: number;
 }

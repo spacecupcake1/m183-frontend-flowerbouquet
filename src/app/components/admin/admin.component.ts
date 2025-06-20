@@ -1,9 +1,9 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Subscription } from 'rxjs';
-import { RoleService } from 'src/app/service/role.guard';
 import { User } from '../../data/user';
 import { AuthService } from '../../service/auth.service';
+import { PermissionService } from '../../service/permission.service';
 import { UserService } from '../../service/user.service';
 import { ValidationService } from '../../service/validation.service';
 
@@ -538,7 +538,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     private userService: UserService,
     private authService: AuthService,
     private validationService: ValidationService,
-    private roleService: RoleService,
+    private permissionService: PermissionService,
     private formBuilder: FormBuilder
   ) {
     this.userForm = this.createUserForm();
@@ -795,7 +795,7 @@ export class AdminComponent implements OnInit, OnDestroy {
 
     if (this.isEditMode && this.selectedUser) {
       // Update existing user
-      const updateSub = this.userService.updateUser(this.selectedUser.id, userData).subscribe({
+      const updateSub = this.userService.updateUser(this.selectedUser.id!, userData).subscribe({
         next: () => {
           this.closeUserModal();
           this.loadUsers();
@@ -852,7 +852,7 @@ export class AdminComponent implements OnInit, OnDestroy {
 
     if (hasRole) {
       // Remove role
-      const removeSub = this.userService.removeRoleFromUser(this.selectedUser.id, role).subscribe({
+      const removeSub = this.userService.removeRoleFromUser(this.selectedUser.id!, role).subscribe({
         next: () => {
           if (this.selectedUser) {
             this.selectedUser.roles = this.selectedUser.roles.filter(r => r !== role);
@@ -871,7 +871,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       this.subscriptions.push(removeSub);
     } else {
       // Add role
-      const addSub = this.userService.addRoleToUser(this.selectedUser.id, role).subscribe({
+      const addSub = this.userService.addRoleToUser(this.selectedUser.id!, role).subscribe({
         next: () => {
           if (this.selectedUser) {
             this.selectedUser.roles.push(role);
@@ -922,7 +922,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     if (!confirmed) return;
 
     this.isLoading = true;
-    const deleteSub = this.userService.deleteUser(user.id).subscribe({
+    const deleteSub = this.userService.deleteUser(user.id!).subscribe({
       next: () => {
         this.loadUsers();
       },
@@ -938,7 +938,7 @@ export class AdminComponent implements OnInit, OnDestroy {
    * Utility methods.
    */
   trackByUserId(index: number, user: User): number {
-    return user.id;
+    return user.id!;
   }
 
   getUserInitials(user: User): string {

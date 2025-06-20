@@ -2,13 +2,13 @@
   <!-- Header with Back Button -->
   <div class="detail-header">
     <button mat-icon-button (click)="goBack()" class="back-button">
-      <mat-icon>arrow_back</mat-icon>
+      ← Back
     </button>
     <h1>Flower Details</h1>
 
     <!-- Admin Badge -->
     <div *ngIf="isAdmin()" class="admin-badge">
-      <mat-icon>admin_panel_settings</mat-icon>
+      ⚙️ Admin
       <span>Admin</span>
     </div>
   </div>
@@ -71,7 +71,7 @@
                   (click)="addFlowerToTemp()"
                   [disabled]="!isAvailable()"
                   class="add-button">
-            <mat-icon>add_shopping_cart</mat-icon>
+            🛒
             {{ isAvailable() ? 'Add to Bouquet' : 'Not Available' }}
           </button>
 

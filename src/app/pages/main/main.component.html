@@ -1,385 +1,143 @@
-<!-- Integrated main.component.html with security features and flower functionality -->
 <div class="main-container">
+  <header class="main-header">
+    <h1>🌹 Flower Bouquet Shop</h1>
 
-  <!-- Top Navigation Bar -->
-  <div class="topnav">
-    <!-- Search Section -->
-    <div class="search-section">
-      <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Search flowers...</mat-label>
-        <input matInput
-               type="text"
-               placeholder="Search.."
-               [(ngModel)]="searchTerm"
-               (input)="onSearch()">
-        <mat-icon matSuffix>search</mat-icon>
-      </mat-form-field>
+    <!-- User info and logout -->
+    <div *ngIf="isAuthenticated()" class="user-info">
+      <span>Welcome, {{getUserDisplayName()}}</span>
+      <button (click)="logout()" class="btn btn-outline">Logout</button>
+    </div>
 
-      <button mat-icon-button
-              (click)="onFilter()"
-              class="filter-btn"
-              matTooltip="Filter available flowers">
-        <mat-icon>filter_list</mat-icon>
+    <!-- Login prompt for non-authenticated users -->
+    <div *ngIf="!isAuthenticated()" class="login-prompt">
+      <a [routerLink]="['/login']" class="btn btn-primary">Login</a>
+      <a [routerLink]="['/register']" class="btn btn-secondary">Register</a>
+    </div>
+  </header>
+
+  <!-- Error display -->
+  <div *ngIf="error" class="alert alert-error">
+    {{error}}
+    <button (click)="error = null" class="close-btn">&times;</button>
+  </div>
+
+  <!-- Quick actions for authenticated users -->
+  <div *ngIf="isAuthenticated()" class="quick-actions">
+    <h2>What would you like to do?</h2>
+
+    <div class="action-grid">
+      <!-- User actions -->
+      <button *appRoleBasedDisplay="['ROLE_USER', 'ROLE_ADMIN']"
+              (click)="viewFlowers()"
+              class="action-card">
+        <i class="icon">🌸</i>
+        <h3>Browse Flowers</h3>
+        <p>Explore our beautiful flower collection</p>
       </button>
-    </div>
 
-    <!-- User Section -->
-    <div class="user-section">
-      <!-- If user is logged in -->
-      <div *ngIf="isLoggedIn()" class="logged-in-section">
-        <!-- User Avatar and Info -->
-        <div class="user-info">
-          <div class="user-avatar">
-            {{ getUserInitials() }}
-          </div>
-          <div class="user-details">
-            <span class="welcome-text">Welcome, {{ getCurrentUser()?.firstname }}!</span>
-            <span class="user-role" *ngIf="isAdminUser()">Administrator</span>
-            <span class="user-role" *ngIf="hasRole('ROLE_MODERATOR') && !isAdminUser()">Moderator</span>
-          </div>
-        </div>
+      <!-- Admin actions -->
+      <button *appRoleBasedDisplay="'ROLE_ADMIN'"
+              (click)="openAdminPanel()"
+              class="action-card admin-card">
+        <i class="icon">⚙️</i>
+        <h3>Admin Panel</h3>
+        <p>Manage the flower shop</p>
+      </button>
 
-        <!-- Quick Action Buttons -->
-        <div class="action-buttons">
-          <!-- Profile Button -->
-          <button mat-icon-button
-                  (click)="navigateTo('/profile')"
-                  matTooltip="My Profile">
-            <mat-icon>account_circle</mat-icon>
-          </button>
+      <button *appRoleBasedDisplayAction="'create-flower'"
+              (click)="createFlower()"
+              class="action-card admin-card">
+        <i class="icon">➕</i>
+        <h3>Add New Flower</h3>
+        <p>Create a new flower listing</p>
+      </button>
 
-          <!-- Admin Panel Button (only for admins) -->
-          <button *ngIf="isAdminUser()"
-                  mat-raised-button
-                  color="accent"
-                  (click)="goToAdminPanel()"
-                  class="admin-btn">
-            <mat-icon>admin_panel_settings</mat-icon>
-            Admin Panel
-          </button>
-
-          <!-- Flower Management Button (for admins/moderators) -->
-          <button *ngIf="isAdminUser() || hasRole('ROLE_MODERATOR')"
-                  mat-stroked-button
-                  color="primary"
-                  (click)="goToFlowerAdmin()"
-                  class="flower-admin-btn">
-            <mat-icon>local_florist</mat-icon>
-            Manage Flowers
-          </button>
-
-          <!-- Logout Button -->
-          <button mat-button
-                  (click)="logout()"
-                  class="logout-btn"
-                  matTooltip="Sign out">
-            <mat-icon>logout</mat-icon>
-            Logout
-          </button>
-        </div>
-      </div>
-
-      <!-- If user is not logged in -->
-      <div *ngIf="!isLoggedIn()" class="not-logged-in-section">
-        <button mat-button
-                (click)="goToLogin()"
-                class="login-btn">
-          <mat-icon>login</mat-icon>
-          Login
-        </button>
-        <button mat-raised-button
-                color="primary"
-                (click)="goToRegister()"
-                class="register-btn">
-          <mat-icon>person_add</mat-icon>
-          Register
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Welcome Section -->
-  <div class="welcome-section" [class.authenticated]="isLoggedIn()">
-    <div class="welcome-content">
-
-      <!-- Not Authenticated -->
-      <div *ngIf="!isLoggedIn()" class="welcome-guest">
-        <mat-icon class="welcome-icon">local_florist</mat-icon>
-        <h1 class="welcome-title">Welcome to FlowerBouquet</h1>
-        <p class="welcome-subtitle">
-          Discover beautiful flowers and create stunning arrangements with our premium collection.
-        </p>
-        <div class="welcome-actions">
-          <button mat-raised-button
-                  color="primary"
-                  size="large"
-                  (click)="goToRegister()">
-            <mat-icon>person_add</mat-icon>
-            Get Started
-          </button>
-          <button mat-stroked-button
-                  color="primary"
-                  size="large"
-                  (click)="goToLogin()">
-            <mat-icon>login</mat-icon>
-            Sign In
-          </button>
-        </div>
-      </div>
-
-      <!-- Authenticated User -->
-      <div *ngIf="isLoggedIn()" class="welcome-user">
-        <div class="welcome-header">
-          <mat-icon class="welcome-icon">local_florist</mat-icon>
-          <div>
-            <h1 class="welcome-title">
-              Welcome back, {{ getCurrentUser()?.firstname }}!
-              <mat-icon *ngIf="isAdminUser()" class="admin-crown" matTooltip="Administrator">star</mat-icon>
-            </h1>
-            <p class="welcome-subtitle">{{ getWelcomeMessage() }}</p>
-          </div>
-        </div>
-
-        <!-- Quick Stats for authenticated users -->
-        <div class="quick-stats" *ngIf="quickStats.length > 0">
-          <mat-card
-            *ngFor="let stat of quickStats"
-            class="stat-card"
-            [class]="'stat-' + stat.color">
-            <mat-card-content>
-              <div class="stat-content">
-                <div class="stat-icon">
-                  <mat-icon>{{ stat.icon }}</mat-icon>
-                </div>
-                <div class="stat-info">
-                  <div class="stat-value">{{ stat.value }}</div>
-                  <div class="stat-label">{{ stat.label }}</div>
-                  <div *ngIf="stat.change" class="stat-change" [class]="'change-' + stat.changeDirection">
-                    <mat-icon>{{ getChangeIcon(stat.changeDirection) }}</mat-icon>
-                    {{ stat.change }}
-                  </div>
-                </div>
-              </div>
-            </mat-card-content>
-          </mat-card>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Admin Status Banner (only visible to admins) -->
-  <div *ngIf="isAdminUser()" class="admin-banner">
-    <mat-icon>admin_panel_settings</mat-icon>
-    <span>Admin Mode Active - You have administrative privileges</span>
-    <button mat-button (click)="goToAdminPanel()">Go to Admin Panel</button>
-  </div>
-
-  <!-- Dashboard Cards (for authenticated users) -->
-  <div *ngIf="isLoggedIn()" class="dashboard-section">
-    <h2 class="section-title">
-      <mat-icon>dashboard</mat-icon>
-      Quick Access
-    </h2>
-
-    <div class="dashboard-cards">
-      <mat-card
-        *ngFor="let card of getVisibleCards()"
-        class="dashboard-card"
-        [class]="'card-' + card.color"
-        (click)="navigateTo(card.route)"
-        role="button"
-        tabindex="0">
-
-        <mat-card-header>
-          <div mat-card-avatar class="card-icon">
-            <mat-icon>{{ card.icon }}</mat-icon>
-          </div>
-          <mat-card-title>{{ card.title }}</mat-card-title>
-          <mat-card-subtitle>{{ card.description }}</mat-card-subtitle>
-          <span *ngIf="card.badge" class="card-badge">{{ card.badge }}</span>
-        </mat-card-header>
-
-        <mat-card-actions align="end">
-          <button mat-button color="primary">
-            <mat-icon>arrow_forward</mat-icon>
-            Open
-          </button>
-        </mat-card-actions>
-      </mat-card>
-    </div>
-  </div>
-
-  <!-- Main Content - Flowers Section -->
-  <div class="content-section">
-    <div class="flowers-header">
-      <h2 class="section-title">
-        <mat-icon>local_florist</mat-icon>
-        Our Flower Collection
-      </h2>
-
-      <div class="flowers-actions" *ngIf="isLoggedIn()">
-        <button mat-raised-button
-                color="primary"
-                (click)="navigateTo('/custom')"
-                *ngIf="!isLoading">
-          <mat-icon>palette</mat-icon>
-          Create Custom Bouquet
-        </button>
-      </div>
-    </div>
-
-    <!-- Loading Indicator -->
-    <div *ngIf="isLoading" class="loading-section">
-      <mat-progress-spinner mode="indeterminate" diameter="50"></mat-progress-spinner>
-      <p>Loading beautiful flowers...</p>
-    </div>
-
-    <!-- Flowers Grid -->
-    <div class="flowers-container" *ngIf="!isLoading">
-      <mat-card class="flower-card" *ngFor="let flower of flowers">
-
-        <!-- Flower Image -->
-        <div class="flower-image-container">
-          <img [src]="getImageUrl(flower.imageUrl)"
-               [alt]="flower.name"
-               class="flower-image"
-               (error)="onImageError($event)"
-               loading="lazy">
-
-          <!-- Availability Badge -->
-          <div class="availability-badge"
-               [class.available]="flower.availablity === 'Available'"
-               [class.unavailable]="flower.availablity === 'Unavailable'">
-            <mat-icon>{{ flower.availablity === 'Available' ? 'check_circle' : 'cancel' }}</mat-icon>
-            {{ flower.availablity }}
-          </div>
-        </div>
-
-        <!-- Flower Content -->
-        <mat-card-header>
-          <mat-card-title>
-            <a (click)="viewFlowerDetails(flower.id)" class="flower-link">
-              {{ flower.name }}
-            </a>
-          </mat-card-title>
-          <mat-card-subtitle>{{ flower.meaning }}</mat-card-subtitle>
-        </mat-card-header>
-
-        <mat-card-content>
-          <p class="flower-info">{{ flower.info }}</p>
-
-          <div class="flower-details">
-            <div class="flower-color">
-              <mat-icon>palette</mat-icon>
-              <span>{{ flower.color }}</span>
-            </div>
-            <div class="flower-price">
-              <span>€{{ flower.price }}</span>
-            </div>
-          </div>
-        </mat-card-content>
-
-        <!-- Action Buttons -->
-        <mat-card-actions>
-          <button mat-button
-                  color="primary"
-                  (click)="viewFlowerDetails(flower.id)">
-            <mat-icon>visibility</mat-icon>
-            View Details
-          </button>
-
-          <button mat-raised-button
-                  color="primary"
-                  *ngIf="flower.availablity === 'Available'"
-                  (click)="navigateTo('/checkout')">
-            <mat-icon>add_shopping_cart</mat-icon>
-            Add to Cart
-          </button>
-
-          <!-- Admin Quick Actions (only for admins) -->
-          <button *ngIf="isAdminUser()"
-                  mat-icon-button
-                  color="accent"
-                  (click)="goToFlowerAdmin()"
-                  matTooltip="Edit in Admin Panel">
-            <mat-icon>edit</mat-icon>
-          </button>
-        </mat-card-actions>
-      </mat-card>
-    </div>
-
-    <!-- No Flowers Message -->
-    <div *ngIf="flowers.length === 0 && !isLoading" class="no-flowers">
-      <mat-icon class="no-flowers-icon">local_florist</mat-icon>
-      <h3>No flowers found</h3>
-      <p>Try adjusting your search or filter criteria.</p>
-
-      <div *ngIf="isAdminUser()" class="admin-suggestion">
-        <p>As an admin, you can <a (click)="goToFlowerAdmin()" class="admin-link">manage the flower catalog</a>.</p>
-        <button mat-raised-button
-                color="primary"
-                (click)="goToFlowerAdmin()">
-          <mat-icon>add</mat-icon>
-          Add New Flowers
-        </button>
-      </div>
-
-      <div *ngIf="!isLoggedIn()" class="login-suggestion">
-        <p>Sign in to access more features and create custom arrangements.</p>
-        <button mat-raised-button
-                color="primary"
-                (click)="goToLogin()">
-          <mat-icon>login</mat-icon>
-          Sign In
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Quick Actions Floating Button (for authenticated users) -->
-  <div *ngIf="isLoggedIn()" class="quick-actions-fab">
-    <button mat-fab
-            color="primary"
-            (click)="toggleQuickActions()"
-            [attr.aria-expanded]="showQuickActions"
-            aria-label="Quick actions menu">
-      <mat-icon>{{ showQuickActions ? 'close' : 'add' }}</mat-icon>
-    </button>
-
-    <div class="fab-actions" [class.show]="showQuickActions">
-      <button *ngFor="let action of quickActions"
-              mat-mini-fab
-              color="accent"
-              (click)="executeQuickAction(action)"
-              [attr.aria-label]="action.label"
-              [matTooltip]="action.label">
-        <mat-icon>{{ action.icon }}</mat-icon>
+      <button *appRoleBasedDisplayAction="'edit-flower'"
+              (click)="manageFlowers()"
+              class="action-card admin-card">
+        <i class="icon">✏️</i>
+        <h3>Manage Flowers</h3>
+        <p>Edit and organize flowers</p>
       </button>
     </div>
   </div>
 
-  <!-- Footer Information -->
-  <div class="footer-info" *ngIf="!isLoggedIn()">
-    <mat-card class="info-card">
-      <mat-card-content>
-        <div class="info-grid">
-          <div class="info-item">
-            <mat-icon>security</mat-icon>
-            <h4>Secure & Trusted</h4>
-            <p>Your data is protected with enterprise-grade security.</p>
-          </div>
-          <div class="info-item">
-            <mat-icon>local_shipping</mat-icon>
-            <h4>Fast Delivery</h4>
-            <p>Fresh flowers delivered to your door with care.</p>
-          </div>
-          <div class="info-item">
-            <mat-icon>thumb_up</mat-icon>
-            <h4>Quality Guaranteed</h4>
-            <p>Premium flowers with 100% satisfaction guarantee.</p>
+  <!-- Featured flowers for authenticated users -->
+  <div *ngIf="isAuthenticated() && permissionService.canView('flower-catalog')" class="featured-flowers">
+    <h2>Featured Flowers</h2>
+
+    <div *ngIf="isLoading" class="loading">
+      <p>Loading flowers...</p>
+    </div>
+
+    <div *ngIf="!isLoading && flowers.length > 0" class="flower-grid">
+      <div *ngFor="let flower of flowers.slice(0, 6)"
+           class="flower-card clickable"
+           (click)="openFlowerDetail(flower)"
+           [title]="'Click to view details for ' + flower.name"
+           (mouseenter)="debugFlower(flower)">
+
+        <img [src]="getFlowerImageUrl(flower.imageUrl)"
+             [alt]="flower.name"
+             class="flower-image"
+             (error)="onFlowerImageError($event)"
+             loading="lazy">
+
+        <div class="flower-info">
+          <h3>{{flower.name}}</h3>
+          <p class="flower-meaning">{{flower.meaning}}</p>
+          <p class="flower-price">€{{flower.price}}</p>
+          <span class="availability"
+                [class.available]="flower.availablity === 'Available'"
+                [class.unavailable]="flower.availablity !== 'Available'">
+            {{flower.availablity}}
+          </span>
+
+          <!-- FIXED: Debug info using component methods -->
+          <div class="debug-info" style="font-size: 10px; color: #999; margin-top: 5px;">
+            ID: {{getFlowerIdDisplay(flower)}} | Type: {{getFlowerIdType(flower)}}
           </div>
         </div>
-      </mat-card-content>
-    </mat-card>
+
+        <!-- Click overlay for better UX -->
+        <div class="click-overlay">
+          <i class="icon">👁️</i>
+          <span>View Details</span>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="!isLoading && flowers.length === 0" class="no-flowers">
+      <p>No flowers available at the moment.</p>
+      <button *ngIf="permissionService.canPerform('create-flower')"
+              (click)="createFlower()"
+              class="btn btn-primary">
+        Add First Flower
+      </button>
+    </div>
+
+    <!-- View All Flowers Button -->
+    <div class="view-all-section">
+      <button (click)="viewFlowers()" class="btn btn-primary view-all-btn">
+        View All Flowers →
+      </button>
+    </div>
+
+    <!-- FIXED: Debug Panel using component methods -->
+    <div class="debug-panel" style="background: #f8f9fa; padding: 15px; margin: 20px 0; border-radius: 5px; border-left: 4px solid #007bff;">
+      <h4>🐛 Debug Info</h4>
+      <p><strong>Flowers loaded:</strong> {{ flowers.length }}</p>
+      <p><strong>Is Authenticated:</strong> {{ isAuthenticated() }}</p>
+      <p><strong>Can View Catalog:</strong> {{ permissionService.canView('flower-catalog') }}</p>
+      <button class="btn btn-sm btn-info" (click)="debugPermissions()">Log Permissions</button>
+      <button class="btn btn-sm btn-warning" (click)="loadFlowers()">Reload Flowers</button>
+    </div>
+  </div>
+
+  <!-- Public information for non-authenticated users -->
+  <div *ngIf="!isAuthenticated()" class="public-info">
+    <h2>Welcome to Flower Bouquet Shop</h2>
+    <p>Discover beautiful flowers and create memorable bouquets.</p>
+    <p>Please <a [routerLink]="['/login']">log in</a> or <a [routerLink]="['/register']">register</a> to browse our collection.</p>
   </div>
 </div>

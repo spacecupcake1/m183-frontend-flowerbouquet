@@ -2,8 +2,8 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { User } from 'src/app/data/user';
+import { AuthService } from 'src/app/service/auth.service';
 import { UserService } from 'src/app/service/user.service';
-
 
 /**
  * Header component with role-based navigation and authentication state management.
@@ -22,21 +22,22 @@ export class HeaderComponent implements OnInit, OnDestroy {
   isLoading = false;
 
   private userSubscription?: Subscription;
-  private loginSubscription?: Subscription;
+  private authSubscription?: Subscription;
 
   constructor(
-    private userService: UserService,
+    private authService: AuthService, // Use AuthService as primary authentication service
+    private userService: UserService, // Keep for utility methods if needed
     private router: Router
   ) {}
 
   ngOnInit(): void {
-    // Subscribe to authentication state changes
-    this.userSubscription = this.userService.currentUser$.subscribe(user => {
+    // Subscribe to authentication state changes from AuthService
+    this.userSubscription = this.authService.currentUser.subscribe((user: User | null) => {
       this.currentUser = user;
       this.isAdmin = user?.isAdmin || false;
     });
 
-    this.loginSubscription = this.userService.isLoggedIn$.subscribe(loggedIn => {
+    this.authSubscription = this.authService.isAuthenticated$.subscribe((loggedIn: boolean) => {
       this.isLoggedIn = loggedIn;
     });
   }
@@ -44,7 +45,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     // Clean up subscriptions to prevent memory leaks
     this.userSubscription?.unsubscribe();
-    this.loginSubscription?.unsubscribe();
+    this.authSubscription?.unsubscribe();
   }
 
   /**
@@ -55,7 +56,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
     this.isLoading = true;
 
-    this.userService.logout().subscribe({
+    this.authService.logout().subscribe({
       next: () => {
         // Clear any sensitive data from local state
         this.currentUser = null;
@@ -142,45 +143,21 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   hasRole(roleName: string): boolean {
-    return this.currentUser?.roles?.includes(roleName) || false;
+    return this.authService.hasRole(roleName);
   }
 
   /**
    * Gets display name for the current user.
    */
   getUserDisplayName(): string {
-    if (!this.currentUser) return '';
-
-    const firstname = this.currentUser.firstname || '';
-    const lastname = this.currentUser.lastname || '';
-    const username = this.currentUser.username || '';
-
-    if (firstname && lastname) {
-      return `${firstname} ${lastname}`;
-    } else if (firstname) {
-      return firstname;
-    } else {
-      return username;
-    }
+    return this.userService.getUserDisplayName(this.currentUser);
   }
 
   /**
    * Gets user initials for avatar display.
    */
   getUserInitials(): string {
-    if (!this.currentUser) return '';
-
-    const firstname = this.currentUser.firstname || '';
-    const lastname = this.currentUser.lastname || '';
-    const username = this.currentUser.username || '';
-
-    if (firstname && lastname) {
-      return `${firstname.charAt(0)}${lastname.charAt(0)}`.toUpperCase();
-    } else if (firstname) {
-      return firstname.substring(0, 2).toUpperCase();
-    } else {
-      return username.substring(0, 2).toUpperCase();
-    }
+    return this.userService.getUserInitials(this.currentUser);
   }
 
   /**
@@ -234,5 +211,19 @@ export class HeaderComponent implements OnInit, OnDestroy {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#x27;');
+  }
+
+  /**
+   * Get current user synchronously for template usage
+   */
+  getCurrentUser(): User | null {
+    return this.authService.getCurrentUserValue();
+  }
+
+  /**
+   * Check if user is authenticated
+   */
+  isAuthenticated(): boolean {
+    return this.authService.isAuthenticated();
   }
 }

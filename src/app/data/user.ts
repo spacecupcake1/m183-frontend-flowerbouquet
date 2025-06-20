@@ -1,12 +1,13 @@
 export interface User {
   id: number;
+  userId?: number; // Optional alias
   username: string;
   firstname: string;
   lastname: string;
   email: string;
   roles: string[];
   isAdmin: boolean;
-  password?: string; // Optional since we don't send passwords to frontend
+  lastLogin?: string;
 }
 
 export interface LoginResponse {

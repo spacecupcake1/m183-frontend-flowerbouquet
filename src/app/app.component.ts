@@ -1,34 +1,27 @@
-import { Component, OnInit } from '@angular/core';
-import { AuthService } from './service/auth.service';
+import { Component } from '@angular/core';
 
 @Component({
   selector: 'app-root',
   template: `
-    <app-header></app-header>
-    <main class="main-content" role="main">
-      <router-outlet></router-outlet>
-    </main>
-    <div *ngIf="isLoading" class="global-loading">
-      <div class="loading-spinner"></div>
-      <p>Loading...</p>
+    <div class="app-container">
+      <app-header></app-header>
+      <main class="main-content">
+        <router-outlet></router-outlet>
+      </main>
+      <app-footer></app-footer>
     </div>
   `,
-  styleUrls: ['./app.component.css']
+  styles: [`
+    .app-container {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .main-content {
+      flex: 1;
+    }
+  `]
 })
-export class AppComponent implements OnInit {
-
-  isLoading = false;
-  title = 'Flower Bouquet';
-
-  constructor(private authService: AuthService) {}
-
-  ngOnInit(): void {
-    // Start automatic session refresh
-    this.authService.startSessionRefresh(25); // Refresh every 25 minutes
-
-    // Subscribe to loading state
-    this.authService.isLoading$.subscribe(loading => {
-      this.isLoading = loading;
-    });
-  }
+export class AppComponent {
+  title = 'Flower Bouquet Shop';
 }
