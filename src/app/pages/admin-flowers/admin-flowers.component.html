@@ -81,9 +81,10 @@
       </div>
 
       <form [formGroup]="flowerForm"
-            (ngSubmit)="isCreating ? createFlower(flowerForm.value) : updateFlower(flowerForm.value, editingFlower?.id)"
-            class="flower-form"
-            novalidate>
+        (ngSubmit)="onSubmitForm()"
+        class="flower-form"
+        novalidate
+      >
 
         <!-- Row 1: Name and Color -->
         <div class="form-row">

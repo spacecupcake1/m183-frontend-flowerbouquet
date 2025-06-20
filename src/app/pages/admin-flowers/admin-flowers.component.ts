@@ -239,7 +239,9 @@ loadFlowers(): Promise<void> {
 
     this.flowerService.createFlower(createRequest).subscribe({
       next: (response) => {
+        console.log('Flower created successfully:', response);
         this.loadFlowers();
+        this.cancelCreate();
       },
       error: (error) => {
         this.error = 'Failed to create flower';
@@ -248,13 +250,21 @@ loadFlowers(): Promise<void> {
     });
   }
 
-  // Fix updateFlower method (line 327 error)
   updateFlower(flowerId: number, flowerData: any): void {
+    // Add validation
+    if (!flowerId) {
+      this.error = 'Invalid flower ID for update';
+      console.error('updateFlower called with invalid flowerId:', flowerId);
+      return;
+    }
+
     const updateRequest = this.mapFlowerToCreateRequest(flowerData);
 
     this.flowerService.updateFlower(flowerId, updateRequest).subscribe({
       next: (response) => {
+        console.log('Flower updated successfully:', response);
         this.loadFlowers();
+        this.cancelEdit(); // Exit edit mode after successful update
       },
       error: (error) => {
         this.error = 'Failed to update flower';
@@ -607,4 +617,30 @@ loadFlowers(): Promise<void> {
     this.debugMode = !this.debugMode;
     this.debugLog('Debug mode toggled', this.debugMode);
   }
+
+  onSubmitForm(): void {
+    if (this.flowerForm.invalid) {
+      this.debugLog('Form is invalid, not submitting');
+      this.markFormGroupTouched(this.flowerForm);
+      return;
+    }
+
+    if (this.isCreating) {
+      this.createFlower(this.flowerForm.value);
+    } else if (this.isEditing && this.editingFlower?.id) {
+      this.updateFlower(this.editingFlower.id, this.flowerForm.value);
+    } else {
+      this.error = 'Invalid editing state - no flower ID found';
+      console.error('Cannot update flower: missing ID', this.editingFlower);
+    }
+  }
+
+  // Helper method to mark all form controls as touched (for validation display)
+  private markFormGroupTouched(formGroup: FormGroup): void {
+    Object.keys(formGroup.controls).forEach(key => {
+      const control = formGroup.get(key);
+      control?.markAsTouched();
+    });
+  }
+
 }
