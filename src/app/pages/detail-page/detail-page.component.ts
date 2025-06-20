@@ -2,10 +2,9 @@ import { Component, OnInit, SecurityContext } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Flower } from 'src/app/data/flower';
-import { User } from 'src/app/data/user';
+import { User } from 'src/app/data/user'; // Import the consistent User interface
+import { AuthService } from 'src/app/service/auth.service'; // Use AuthService instead of UserService
 import { FlowerService } from 'src/app/service/flower.service';
-import { UserService } from 'src/app/service/user.service';
-
 
 @Component({
   selector: 'app-detail-page',
@@ -30,7 +29,7 @@ export class DetailPageComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private flowerService: FlowerService,
-    private userService: UserService,
+    private authService: AuthService, // Use AuthService instead of UserService
     private sanitizer: DomSanitizer
   ) { }
 
@@ -83,11 +82,11 @@ export class DetailPageComponent implements OnInit {
   // ========== ADMIN FUNCTIONS ==========
 
   isAdmin(): boolean {
-    return this.userService.isAdmin();
+    return this.authService.isAdmin();
   }
 
   isLoggedIn(): boolean {
-    return this.userService.isLoggedIn();
+    return this.authService.isAuthenticated();
   }
 
   editFlower(): void {
@@ -107,11 +106,17 @@ export class DetailPageComponent implements OnInit {
       return;
     }
 
+    // Add null/undefined check for flower.id
+    if (!this.flower || this.flower.id === undefined || this.flower.id === null) {
+      alert('Invalid flower ID');
+      return;
+    }
+
     if (!confirm(`Are you sure you want to delete "${this.flower.name}"? This action cannot be undone.`)) {
       return;
     }
 
-    const userId = this.userService.getCurrentUserId();
+    const userId = this.authService.getUserId();
     if (!userId) {
       alert('User not logged in');
       return;
@@ -119,7 +124,8 @@ export class DetailPageComponent implements OnInit {
 
     this.isLoading = true;
 
-    this.flowerService.deleteFlower(this.flower.id, userId).subscribe({
+    // Fixed: Ensure flower.id is defined before passing to deleteFlower
+    this.flowerService.deleteFlower(this.flower.id).subscribe({
       next: (response) => {
         console.log('Flower deleted successfully:', response);
         alert('Flower deleted successfully!');
@@ -193,10 +199,10 @@ export class DetailPageComponent implements OnInit {
   }
 
   getCurrentUser(): User | null {
-    return this.userService.getCurrentUserData();
+    return this.authService.getCurrentUserValue();
   }
 
   getCurrentUserId(): number | null {
-    return this.userService.getCurrentUserId();
+    return this.authService.getUserId();
   }
 }

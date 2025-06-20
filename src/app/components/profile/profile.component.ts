@@ -2,7 +2,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { RoleService } from 'src/app/service/role.guard';
+import { PermissionService } from 'src/app/service/permission.service';
 import { User } from '../../data/user';
 import { AuthService } from '../../service/auth.service';
 import { UserService } from '../../service/user.service';
@@ -351,7 +351,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private userService: UserService,
     private validationService: ValidationService,
-    private roleService: RoleService,
+    private permissionService: PermissionService,
     private formBuilder: FormBuilder,
     private router: Router
   ) {
@@ -429,7 +429,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
    * Load current user data and populate forms.
    */
   private loadCurrentUser(): void {
-    const userSub = this.authService.currentUser$.subscribe(user => {
+    const userSub = this.authService.currentUser.subscribe(user => {
       this.currentUser = user;
       if (user) {
         this.populateProfileForm(user);

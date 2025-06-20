@@ -49,15 +49,15 @@ import { ValidationService } from './service/validation.service';
 
 
 // Guards and Interceptors
-import { AdminGuard } from './service/admin.guard';
-import { AuthGuard } from './service/auth.guard';
+import { AdminComponent } from './components/admin/admin.component';
+import { NotFoundComponent } from './components/not-found/not-found.component';
+import { ProfileComponent } from './components/profile/profile.component';
+import { UnauthorizedComponent } from './components/unauthorized/unauthorized.component';
+import { AdminGuard } from './guards/admin.guard';
+import { AuthGuard } from './guards/auth.guard';
 import { AuthInterceptor } from './service/auth.interceptor';
 import { AuthService } from './service/auth.service';
 import { SessionInterceptor } from './service/session.interceptor';
-import { AdminComponent } from './components/admin/admin.component';
-import { UnauthorizedComponent } from './components/unauthorized/unauthorized.component';
-import { ProfileComponent } from './components/profile/profile.component';
-import { NotFoundComponent } from './components/not-found/not-found.component';
 
 @NgModule({
   declarations: [

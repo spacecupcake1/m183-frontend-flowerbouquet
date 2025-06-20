@@ -1,8 +1,9 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, throwError } from 'rxjs';
-import { catchError, map, tap } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 import { User } from '../data/user';
+import { AuthService } from './auth.service';
 import { ValidationService } from './validation.service';
 
 export interface UserRegistrationData {
@@ -18,18 +19,6 @@ export interface UserLoginData {
   password: string;
 }
 
-export interface LoginResponse {
-  message: string;
-  sessionId: string;
-  userId: number;
-  username: string;
-  firstname: string;
-  lastname: string;
-  email: string;
-  roles: string[];
-  isAdmin: boolean;
-}
-
 export interface UserData {
   userId: number;
   username: string;
@@ -40,6 +29,12 @@ export interface UserData {
   isAdmin?: boolean;
 }
 
+export interface ProfileUpdateData {
+  firstname?: string;
+  lastname?: string;
+  email?: string;
+}
+
 export interface ApiError {
   error: string;
   message: string;
@@ -48,34 +43,22 @@ export interface ApiError {
 
 /**
  * Enhanced UserService with comprehensive security features and error handling.
- * Integrates with AuthService and provides user management capabilities.
+ * Works in conjunction with AuthService for authentication management.
  */
 @Injectable({
   providedIn: 'root'
 })
 export class UserService {
-  private baseUrl = 'http://localhost:8080/api/users';
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
-  private isLoggedInSubject = new BehaviorSubject<boolean>(false);
+  private readonly baseUrl = 'http://localhost:8080/api/users';
   private isLoadingSubject = new BehaviorSubject<boolean>(false);
 
-  public currentUser$ = this.currentUserSubject.asObservable();
-  public isLoggedIn$ = this.isLoggedInSubject.asObservable();
   public isLoading$ = this.isLoadingSubject.asObservable();
 
   constructor(
     private http: HttpClient,
-    private validationService: ValidationService
-  ) {
-    this.initializeUserState();
-  }
-
-  /**
-   * Initialize user state on service creation.
-   */
-  private initializeUserState(): void {
-    this.checkAuthenticationStatus();
-  }
+    private validationService: ValidationService,
+    private authService: AuthService
+  ) {}
 
   /**
    * HTTP options for requests with credentials (sessions).
@@ -95,7 +78,7 @@ export class UserService {
    */
   private convertToUser(userData: UserData): User {
     return {
-      id: userData.userId,
+      id: userData.userId, // Map userId to id for consistency
       username: userData.username,
       firstname: userData.firstname,
       lastname: userData.lastname,
@@ -106,318 +89,257 @@ export class UserService {
   }
 
   /**
-   * Check if user is currently authenticated.
-   */
-  private checkAuthenticationStatus(): void {
-    this.setLoading(true);
-    this.getCurrentUserFromServer().subscribe({
-      next: (user) => {
-        this.updateUserState(user, true);
-        this.setLoading(false);
-      },
-      error: () => {
-        this.updateUserState(null, false);
-        this.setLoading(false);
-      }
-    });
-  }
-
-  /**
-   * Update user state and notify subscribers.
-   */
-  private updateUserState(user: User | null, isLoggedIn: boolean): void {
-    this.currentUserSubject.next(user);
-    this.isLoggedInSubject.next(isLoggedIn);
-  }
-
-  /**
    * Set loading state.
    */
   private setLoading(loading: boolean): void {
     this.isLoadingSubject.next(loading);
   }
 
-  /**
-   * Register a new user with comprehensive validation.
-   */
-  registerUser(userData: UserRegistrationData): Observable<any> {
-    // Client-side validation
-    const validationErrors = this.validateRegistrationData(userData);
-    if (Object.keys(validationErrors).length > 0) {
-      return throwError(() => ({
-        error: {
-          error: 'Validation failed',
-          fieldErrors: validationErrors
-        }
-      }));
-    }
-
-    // Sanitize inputs
-    const sanitizedData = this.sanitizeRegistrationData(userData);
-
-    this.setLoading(true);
-    return this.http.post(`${this.baseUrl}/register`, sanitizedData, this.getHttpOptions())
-      .pipe(
-        tap(() => this.setLoading(false)),
-        catchError(error => {
-          this.setLoading(false);
-          return throwError(() => error);
-        })
-      );
-  }
+  // ========== AUTHENTICATION DELEGATION METHODS ==========
+  // These delegate to AuthService for consistency
 
   /**
-   * Login user with username and password.
-   */
-  login(username: string, password: string): Observable<LoginResponse> {
-    // Client-side validation
-    if (!this.validationService.isValidUsername(username)) {
-      return throwError(() => ({
-        error: { message: 'Invalid username format' }
-      }));
-    }
-
-    if (!password || password.length < 6) {
-      return throwError(() => ({
-        error: { message: 'Password must be at least 6 characters' }
-      }));
-    }
-
-    // Sanitize username (don't sanitize password)
-    const sanitizedUsername = this.validationService.sanitizeInput(username);
-    const loginData: UserLoginData = {
-      username: sanitizedUsername,
-      password
-    };
-
-    this.setLoading(true);
-    return this.http.post<LoginResponse>(`${this.baseUrl}/login`, loginData, this.getHttpOptions())
-      .pipe(
-        tap(response => {
-          if (response && response.userId) {
-            const user: User = {
-              id: response.userId,
-              username: response.username,
-              firstname: response.firstname,
-              lastname: response.lastname,
-              email: response.email,
-              roles: response.roles,
-              isAdmin: response.isAdmin
-            };
-
-            this.updateUserState(user, true);
-          }
-          this.setLoading(false);
-        }),
-        catchError(error => {
-          this.setLoading(false);
-          return throwError(() => error);
-        })
-      );
-  }
-
-  /**
-   * Logout user with session cleanup.
-   */
-  logout(): Observable<any> {
-    this.setLoading(true);
-    return this.http.post(`${this.baseUrl}/logout`, {}, this.getHttpOptions())
-      .pipe(
-        tap(() => {
-          this.clearUserSession();
-          this.setLoading(false);
-        }),
-        catchError(error => {
-          // Even if logout fails, clear local state
-          this.clearUserSession();
-          this.setLoading(false);
-          return throwError(() => error);
-        })
-      );
-  }
-
-  /**
-   * Get current user data from server.
-   */
-  getCurrentUserFromServer(): Observable<User> {
-    return this.http.get<UserData>(`${this.baseUrl}/current`, this.getHttpOptions())
-      .pipe(
-        map(userData => this.convertToUser(userData))
-      );
-  }
-
-  /**
-   * Get current user data from local state (synchronous).
-   */
-  getCurrentUserData(): User | null {
-    return this.currentUserSubject.value;
-  }
-
-  /**
-   * Get current user ID (synchronous).
+   * Get current user ID - Fixed to use .id instead of .userId
    */
   getCurrentUserId(): number | null {
-    const user = this.currentUserSubject.value;
-    return user ? user.id : null;
+    const user = this.authService.getCurrentUserValue();
+    return user ? user.id : null; // Fixed: use .id not .userId
   }
 
   /**
-   * Get current user observable.
+   * Get current user data from AuthService
+   */
+  getCurrentUserData(): User | null {
+    return this.authService.getCurrentUserValue();
+  }
+
+  /**
+   * Get current user observable from AuthService
    */
   getCurrentUser(): Observable<User | null> {
-    return this.currentUser$;
+    return this.authService.currentUser;
   }
 
   /**
-   * Check if user is logged in (synchronous).
+   * Check if user is logged in
    */
   isLoggedIn(): boolean {
-    return this.isLoggedInSubject.value;
+    return this.authService.isAuthenticated();
   }
 
   /**
-   * Check if current user is admin (synchronous).
+   * Check if current user is admin
    */
   isAdmin(): boolean {
-    const user = this.getCurrentUserData();
-    return user?.isAdmin || false;
+    return this.authService.isAdmin();
   }
 
   /**
-   * Check if current user has specific role (synchronous).
+   * Check if current user has specific role
    */
   hasRole(roleName: string): boolean {
-    const user = this.getCurrentUserData();
-    return user?.roles?.includes(roleName) || false;
+    return this.authService.hasRole(roleName);
   }
 
   /**
-   * Check if current user has any of the specified roles.
+   * Check if current user has any of the specified roles
    */
   hasAnyRole(roleNames: string[]): boolean {
-    const user = this.getCurrentUserData();
-    if (!user?.roles) return false;
-    return roleNames.some(role => user.roles.includes(role));
+    return this.authService.hasAnyRole(roleNames);
   }
 
   /**
-   * Get all users (admin only).
+   * Clear user session (delegate to AuthService)
    */
-  getAllUsers(): Observable<User[]> {
-    return this.http.get<UserData[]>(this.baseUrl, this.getHttpOptions())
+  clearUserSession(): void {
+    this.authService.clearAuthState();
+  }
+
+  // ========== USER DISPLAY UTILITY METHODS ==========
+
+  /**
+   * Get user display name - Updated signature to handle null properly
+   */
+  getUserDisplayName(user?: User | null): string {
+    // Convert null to undefined and handle both cases
+    const targetUser = user ?? this.authService.getCurrentUserValue() ?? undefined;
+    if (!targetUser) return '';
+    return `${targetUser.firstname} ${targetUser.lastname}`.trim();
+  }
+
+  /**
+   * Get user initials - Updated signature to handle null properly
+   */
+  getUserInitials(user?: User | null): string {
+    // Convert null to undefined and handle both cases
+    const targetUser = user ?? this.authService.getCurrentUserValue() ?? undefined;
+    if (!targetUser) return '';
+    const first = targetUser.firstname ? targetUser.firstname.charAt(0).toUpperCase() : '';
+    const last = targetUser.lastname ? targetUser.lastname.charAt(0).toUpperCase() : '';
+    return `${first}${last}`;
+  }
+
+  // ========== PROFILE MANAGEMENT ==========
+
+  /**
+   * Update current user profile
+   */
+  updateCurrentUserProfile(updateData: ProfileUpdateData): Observable<User> {
+    // Sanitize input data
+    const sanitizedData = this.sanitizeUpdateData(updateData);
+
+    return this.http.put<any>(`${this.baseUrl}/profile`, sanitizedData, this.getHttpOptions())
       .pipe(
-        map(users => users.map(userData => this.convertToUser(userData)))
+        map(response => {
+          // Convert response to User interface
+          const user: User = {
+            id: response.userId || response.id,
+            username: response.username,
+            firstname: response.firstname,
+            lastname: response.lastname,
+            email: response.email,
+            roles: response.roles || [],
+            isAdmin: response.isAdmin || false,
+            lastLogin: response.lastLogin
+          };
+
+          // Update AuthService with new user data
+          this.authService['setAuthState'](user); // Access private method if available
+
+          return user;
+        }),
+        catchError(this.handleError)
       );
   }
 
   /**
-   * Get user by ID.
-   */
-  getUserById(id: number): Observable<User> {
-    return this.http.get<UserData>(`${this.baseUrl}/${id}`, this.getHttpOptions())
-      .pipe(
-        map(userData => this.convertToUser(userData))
-      );
-  }
-
-  /**
-   * Update user by ID.
-   */
-  updateUser(id: number, userData: Partial<UserRegistrationData>): Observable<User> {
-    // Validate and sanitize update data
-    const sanitizedData = this.sanitizeUpdateData(userData);
-
-    return this.http.put<UserData>(`${this.baseUrl}/${id}`, sanitizedData, this.getHttpOptions())
-      .pipe(
-        map(updatedUser => this.convertToUser(updatedUser)),
-        tap(updatedUser => {
-          // If updating current user, update local state
-          const currentUser = this.getCurrentUserData();
-          if (currentUser && currentUser.id === updatedUser.id) {
-            this.updateUserState(updatedUser, true);
-          }
-        })
-      );
-  }
-
-  /**
-   * Delete user by ID (admin only).
-   */
-  deleteUser(id: number): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/${id}`, this.getHttpOptions());
-  }
-
-  /**
-   * Add role to user (admin only).
-   */
-  addRoleToUser(userId: number, roleName: string): Observable<any> {
-    return this.http.post(`${this.baseUrl}/${userId}/roles/${roleName}`, {}, this.getHttpOptions());
-  }
-
-  /**
-   * Remove role from user (admin only).
-   */
-  removeRoleFromUser(userId: number, roleName: string): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/${userId}/roles/${roleName}`, this.getHttpOptions());
-  }
-
-  /**
-   * Get current user profile.
+   * Get current user profile from server
    */
   getCurrentUserProfile(): Observable<User> {
     return this.http.get<UserData>(`${this.baseUrl}/profile`, this.getHttpOptions())
       .pipe(
-        map(userData => this.convertToUser(userData))
+        map(userData => this.convertToUser(userData)),
+        catchError(this.handleError)
+      );
+  }
+
+  // ========== ADMIN USER MANAGEMENT ==========
+
+  /**
+   * Get all users (admin only)
+   */
+  getAllUsers(): Observable<User[]> {
+    return this.http.get<UserData[]>(`${this.baseUrl}/admin/users`, this.getHttpOptions())
+      .pipe(
+        map(usersData => usersData.map(userData => this.convertToUser(userData))),
+        catchError(this.handleError)
       );
   }
 
   /**
-   * Update current user profile.
+   * Get user by ID (admin only)
    */
-  updateCurrentUserProfile(userData: Partial<UserRegistrationData>): Observable<User> {
+  getUserById(id: number): Observable<User> {
+    return this.http.get<UserData>(`${this.baseUrl}/admin/users/${id}`, this.getHttpOptions())
+      .pipe(
+        map(userData => this.convertToUser(userData)),
+        catchError(this.handleError)
+      );
+  }
+
+  /**
+   * Update user (admin only)
+   */
+  updateUser(userId: number, userData: Partial<UserRegistrationData>): Observable<User> {
     const sanitizedData = this.sanitizeUpdateData(userData);
 
-    return this.http.put<UserData>(`${this.baseUrl}/profile`, sanitizedData, this.getHttpOptions())
+    return this.http.put<UserData>(`${this.baseUrl}/admin/users/${userId}`, sanitizedData, this.getHttpOptions())
       .pipe(
-        map(updatedUser => this.convertToUser(updatedUser)),
-        tap(updatedUser => {
-          this.updateUserState(updatedUser, true);
-        })
+        map(response => this.convertToUser(response)),
+        catchError(this.handleError)
       );
   }
 
   /**
-   * Check if user is admin by ID.
+   * Delete user (admin only)
+   */
+  deleteUser(userId: number): Observable<any> {
+    return this.http.delete(`${this.baseUrl}/admin/users/${userId}`, this.getHttpOptions())
+      .pipe(
+        catchError(this.handleError)
+      );
+  }
+
+  /**
+   * Register new user (admin only)
+   */
+  registerUser(userData: UserRegistrationData): Observable<User> {
+    // Validate and sanitize data
+    const validationErrors = this.validateRegistrationData(userData);
+    if (Object.keys(validationErrors).length > 0) {
+      return throwError(() => ({
+        error: { fieldErrors: validationErrors }
+      }));
+    }
+
+    const sanitizedData = this.sanitizeRegistrationData(userData);
+
+    return this.http.post<UserData>(`${this.baseUrl}/admin/users`, sanitizedData, this.getHttpOptions())
+      .pipe(
+        map(response => this.convertToUser(response)),
+        catchError(this.handleError)
+      );
+  }
+
+  /**
+   * Add role to user (admin only)
+   */
+  addRoleToUser(userId: number, role: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/admin/users/${userId}/roles`, { role }, this.getHttpOptions())
+      .pipe(
+        catchError(this.handleError)
+      );
+  }
+
+  /**
+   * Remove role from user (admin only)
+   */
+  removeRoleFromUser(userId: number, role: string): Observable<any> {
+    return this.http.delete(`${this.baseUrl}/admin/users/${userId}/roles/${role}`, this.getHttpOptions())
+      .pipe(
+        catchError(this.handleError)
+      );
+  }
+
+  /**
+   * Check if user is admin by ID (admin only)
    */
   isUserAdmin(id: number): Observable<{ isAdmin: boolean }> {
-    return this.http.get<{ isAdmin: boolean }>(`${this.baseUrl}/${id}/is-admin`, this.getHttpOptions());
+    return this.http.get<{ isAdmin: boolean }>(`${this.baseUrl}/admin/users/${id}/is-admin`, this.getHttpOptions())
+      .pipe(
+        catchError(this.handleError)
+      );
+  }
+
+  // ========== LOGIN/LOGOUT (LEGACY - USE AUTHSERVICE INSTEAD) ==========
+
+  /**
+   * Login user - DEPRECATED: Use AuthService.login() instead
+   */
+  login(username: string, password: string): Observable<any> {
+    console.warn('UserService.login() is deprecated. Use AuthService.login() instead.');
+    return this.authService.login({ username, password });
   }
 
   /**
-   * Clear user session and local state.
+   * Logout user - DEPRECATED: Use AuthService.logout() instead
    */
-  clearUserSession(): void {
-    this.updateUserState(null, false);
-
-    // Clear any stored session data
-    try {
-      sessionStorage.removeItem('auth_session');
-      localStorage.removeItem('user');
-    } catch (error) {
-      console.warn('Failed to clear session storage:', error);
-    }
+  logout(): Observable<any> {
+    console.warn('UserService.logout() is deprecated. Use AuthService.logout() instead.');
+    return this.authService.logout();
   }
 
-  /**
-   * Refresh current user data from server.
-   */
-  refreshCurrentUser(): Observable<User> {
-    return this.getCurrentUserFromServer().pipe(
-      tap(user => {
-        this.updateUserState(user, true);
-      })
-    );
-  }
+  // ========== VALIDATION AND SANITIZATION ==========
 
   /**
    * Validate registration data on client side.
@@ -501,41 +423,65 @@ export class UserService {
     return sanitized;
   }
 
-  /**
-   * Get user display name.
-   */
-  getUserDisplayName(user?: User): string {
-    const targetUser = user || this.getCurrentUserData();
-    if (!targetUser) return '';
-
-    if (targetUser.firstname && targetUser.lastname) {
-      return `${targetUser.firstname} ${targetUser.lastname}`;
-    } else if (targetUser.firstname) {
-      return targetUser.firstname;
-    } else {
-      return targetUser.username;
-    }
-  }
+  // ========== LEGACY COMPATIBILITY ==========
 
   /**
-   * Get user initials for avatar.
+   * Legacy method for backward compatibility
    */
-  getUserInitials(user?: User): string {
-    const targetUser = user || this.getCurrentUserData();
-    if (!targetUser) return '';
-
-    if (targetUser.firstname && targetUser.lastname) {
-      return `${targetUser.firstname.charAt(0)}${targetUser.lastname.charAt(0)}`.toUpperCase();
-    } else if (targetUser.firstname) {
-      return targetUser.firstname.substring(0, 2).toUpperCase();
-    } else {
-      return targetUser.username.substring(0, 2).toUpperCase();
-    }
-  }
-
-  // Legacy method for backward compatibility
   createUser(user: any): Observable<any> {
     console.warn('createUser is deprecated, use registerUser instead');
     return this.registerUser(user);
   }
+
+  /**
+   * Get current user from server - Legacy method
+   */
+  getCurrentUserFromServer(): Observable<User> {
+    return this.authService.getCurrentUser();
+  }
+
+  /**
+   * Refresh current user data
+   */
+  refreshCurrentUser(): Observable<User> {
+    return this.authService.refreshUser();
+  }
+
+  // ========== ERROR HANDLING ==========
+
+  /**
+   * Handle HTTP errors.
+   */
+  private handleError = (error: HttpErrorResponse): Observable<never> => {
+    let errorMessage = 'An error occurred';
+
+    if (error.error instanceof ErrorEvent) {
+      // Client-side error
+      errorMessage = error.error.message;
+    } else {
+      // Server-side error
+      switch (error.status) {
+        case 400:
+          errorMessage = error.error?.message || 'Bad request';
+          break;
+        case 401:
+          errorMessage = 'Unauthorized access';
+          break;
+        case 403:
+          errorMessage = 'Access forbidden';
+          break;
+        case 404:
+          errorMessage = 'Resource not found';
+          break;
+        case 500:
+          errorMessage = 'Internal server error';
+          break;
+        default:
+          errorMessage = error.error?.message || `Error ${error.status}: ${error.statusText}`;
+      }
+    }
+
+    console.error('UserService Error:', error);
+    return throwError(() => new Error(errorMessage));
+  };
 }
