@@ -2,8 +2,8 @@ import { Component, OnInit, SecurityContext } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Flower } from 'src/app/data/flower';
-import { User } from 'src/app/data/user'; // Import the consistent User interface
-import { AuthService } from 'src/app/service/auth.service'; // Use AuthService instead of UserService
+import { User } from 'src/app/data/user';
+import { AuthService } from 'src/app/service/auth.service';
 import { FlowerService } from 'src/app/service/flower.service';
 
 @Component({
@@ -16,7 +16,7 @@ export class DetailPageComponent implements OnInit {
     name: 'Sample Product',
     meaning: 'This is a sample meaning',
     availablity: 'Available',
-    info: 'This is some sample info bdnngghjhj fghrhbfgh hbbhfbhf r hbhb fbejbhfb hebf fhebfhebfhwe fh wefhbfh hbehfbhfb grgrgrg n fjnjfnjnfjnjef j jfjgjg jjnfj  j f fn fnfjf w fnfjenf jnjf ej fjfenfj ejf ej fj fjnefejhb fhef  hbfhfh',
+    info: 'Loading flower information...',
     color: 'Red',
     price: 99.99,
     id: 0,
@@ -24,30 +24,90 @@ export class DetailPageComponent implements OnInit {
   };
 
   isLoading = false;
+  error = '';
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private flowerService: FlowerService,
-    private authService: AuthService, // Use AuthService instead of UserService
+    private authService: AuthService,
     private sanitizer: DomSanitizer
   ) { }
+
+  ngOnInit(): void {
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) {
+      this.loadFlower(+id);
+    } else {
+      // If no ID, show flower list or default flower
+      this.loadDefaultFlower();
+    }
+  }
+
+  private loadFlower(id: number): void {
+    this.isLoading = true;
+    this.error = '';
+
+    this.flowerService.getFlower(id).subscribe({
+      next: (flower) => {
+        this.flower = flower;
+        this.isLoading = false;
+        console.log('Loaded flower:', flower);
+      },
+      error: (error) => {
+        console.error('Error loading flower:', error);
+        this.error = 'Failed to load flower details';
+        this.isLoading = false;
+        // Set default flower on error
+        this.loadDefaultFlower();
+      }
+    });
+  }
+
+  private loadDefaultFlower(): void {
+    // Set a default flower or load first available flower
+    this.flower = {
+      id: 1,
+      name: 'Beautiful Rose',
+      meaning: 'Love and passion',
+      availablity: 'Available',
+      info: 'A classic red rose symbolizing deep love and affection.',
+      color: 'Red',
+      price: 29.99,
+      imageUrl: 'images/Rose.jpg'
+    };
+  }
+
+  // ========== IMAGE HANDLING ==========
+
+  getImageUrl(imageUrl: string): string {
+    if (!imageUrl) return 'images/default-flower.jpg';
+
+    // If imageUrl is relative, prepend assets/
+    if (imageUrl.startsWith('images/')) {
+      return `assets/${imageUrl}`;
+    }
+
+    return imageUrl;
+  }
+
+  onImageError(event: any): void {
+    console.warn('Image failed to load:', event.target.src);
+    event.target.src = 'assets/images/default-flower.jpg';
+  }
+
+  // ========== UTILITY METHODS ==========
 
   getSanitizedContent(content: string): SafeHtml {
     return this.sanitizer.sanitize(SecurityContext.HTML, content) || '';
   }
 
-  ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (id) {
-      this.flowerService.getFlower(+id).subscribe({
-        next: (flower) => {
-          this.flower = flower;
-          console.log('Loaded flower:', flower);
-        },
-        error: (error) => console.error('Error loading flower:', error)
-      });
-    }
+  isAvailable(): boolean {
+    return this.flower?.availablity?.toLowerCase() === 'available';
+  }
+
+  getCurrentUser(): User | null {
+    return this.authService.getCurrentUserValue();
   }
 
   // ========== NAVIGATION ==========
@@ -57,7 +117,7 @@ export class DetailPageComponent implements OnInit {
   }
 
   goBouquet(): void {
-    this.router.navigate(['/custom']);
+    this.router.navigate(['/customizing']);
   }
 
   goToAdminPanel(): void {
@@ -67,19 +127,33 @@ export class DetailPageComponent implements OnInit {
   // ========== USER FUNCTIONS ==========
 
   addFlowerToTemp(): void {
+    if (!this.isAvailable()) {
+      alert('This flower is not available.');
+      return;
+    }
+
+    if (!this.isLoggedIn()) {
+      alert('Please log in to add flowers to your bouquet.');
+      this.router.navigate(['/login']);
+      return;
+    }
+
+    this.isLoading = true;
     this.flowerService.addFlowerToTemp(this.flower).subscribe({
       next: (response) => {
         console.log('Flower added to temp storage', response);
         alert('Flower added to your bouquet!');
+        this.isLoading = false;
       },
       error: (error) => {
         console.error('Error adding flower to temp storage', error);
         alert('Error adding flower to bouquet. Please try again.');
+        this.isLoading = false;
       }
     });
   }
 
-  // ========== ADMIN FUNCTIONS ==========
+  // ========== AUTHENTICATION CHECKS ==========
 
   isAdmin(): boolean {
     return this.authService.isAdmin();
@@ -89,14 +163,17 @@ export class DetailPageComponent implements OnInit {
     return this.authService.isAuthenticated();
   }
 
+  // ========== ADMIN FUNCTIONS ==========
+
   editFlower(): void {
     if (!this.isAdmin()) {
       alert('Admin privileges required.');
       return;
     }
-    // Navigate to admin panel with this flower selected for editing
+
+    // Navigate to admin flower management with this flower's ID
     this.router.navigate(['/admin/flowers'], {
-      queryParams: { edit: this.flower.id }
+      queryParams: { editId: this.flower.id }
     });
   }
 
@@ -106,103 +183,30 @@ export class DetailPageComponent implements OnInit {
       return;
     }
 
-    // Add null/undefined check for flower.id
-    if (!this.flower || this.flower.id === undefined || this.flower.id === null) {
-      alert('Invalid flower ID');
-      return;
-    }
-
-    if (!confirm(`Are you sure you want to delete "${this.flower.name}"? This action cannot be undone.`)) {
-      return;
-    }
-
-    const userId = this.authService.getUserId();
-    if (!userId) {
-      alert('User not logged in');
-      return;
-    }
+    const confirmed = confirm(`Are you sure you want to delete "${this.flower.name}"? This action cannot be undone.`);
+    if (!confirmed) return;
 
     this.isLoading = true;
-
-    // Fixed: Ensure flower.id is defined before passing to deleteFlower
-    this.flowerService.deleteFlower(this.flower.id).subscribe({
+    this.flowerService.deleteFlower(this.flower.id!).subscribe({
       next: (response) => {
-        console.log('Flower deleted successfully:', response);
-        alert('Flower deleted successfully!');
-        this.router.navigate(['/main']);
+        console.log('Flower deleted successfully', response);
+        alert('Flower deleted successfully.');
+        this.router.navigate(['/admin/flowers']);
       },
       error: (error) => {
         console.error('Error deleting flower:', error);
-        alert('Error deleting flower: ' + (error.error?.error || error.message));
+        alert('Error deleting flower. Please try again.');
         this.isLoading = false;
       }
     });
   }
 
-  // ========== IMAGE HANDLING ==========
+  // ========== DEVELOPMENT HELPERS ==========
 
-  /**
-   * Constructs the full image URL for display
-   */
-  getImageUrl(imageUrl: string): string {
-    console.log('Original imageUrl:', imageUrl); // Debug log
-
-    if (!imageUrl) {
-      return 'assets/images/placeholder.jpg';
-    }
-
-    // If imageUrl already starts with 'assets/', return as is
-    if (imageUrl.startsWith('assets/')) {
-      console.log('Already has assets prefix:', imageUrl);
-      return imageUrl;
-    }
-
-    // If imageUrl starts with 'http' or 'https', it's an external URL
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      console.log('External URL:', imageUrl);
-      return imageUrl;
-    }
-
-    // If imageUrl starts with '/', remove it and prepend 'assets/'
-    if (imageUrl.startsWith('/')) {
-      const result = 'assets' + imageUrl;
-      console.log('Removed leading slash:', result);
-      return result;
-    }
-
-    // If imageUrl starts with 'images/', prepend 'assets/'
-    if (imageUrl.startsWith('images/')) {
-      const result = 'assets/' + imageUrl;
-      console.log('Added assets prefix:', result);
-      return result;
-    }
-
-    // Otherwise, assume it's just a filename and prepend 'assets/images/'
-    const result = 'assets/images/' + imageUrl;
-    console.log('Added full path:', result);
-    return result;
-  }
-
-  /**
-   * Handle image loading errors
-   */
-  onImageError(event: any): void {
-    console.warn('Failed to load image:', event.target.src);
-    // Set a fallback image
-    event.target.src = 'assets/images/placeholder.jpg';
-  }
-
-  // ========== UTILITY FUNCTIONS ==========
-
-  isAvailable(): boolean {
-    return this.flower.availablity === 'Available';
-  }
-
-  getCurrentUser(): User | null {
-    return this.authService.getCurrentUserValue();
-  }
-
-  getCurrentUserId(): number | null {
-    return this.authService.getUserId();
+  debugFlower(): void {
+    console.log('Current flower:', this.flower);
+    console.log('User:', this.getCurrentUser());
+    console.log('Is Admin:', this.isAdmin());
+    console.log('Is Logged In:', this.isLoggedIn());
   }
 }

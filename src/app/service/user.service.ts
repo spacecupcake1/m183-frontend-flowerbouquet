@@ -226,52 +226,76 @@ export class UserService {
   // ========== ADMIN USER MANAGEMENT ==========
 
   /**
-   * Get all users (admin only)
+   * Get all users (admin only) - FIXED ENDPOINT
    */
   getAllUsers(): Observable<User[]> {
-    return this.http.get<UserData[]>(`${this.baseUrl}/admin/users`, this.getHttpOptions())
+    return this.http.get<User[]>(`${this.baseUrl}`, this.getHttpOptions()) // Changed from /admin/users to just /api/users
       .pipe(
-        map(usersData => usersData.map(userData => this.convertToUser(userData))),
+        map(users => users.map(user => ({
+          id: user.id,
+          username: user.username,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          email: user.email,
+          roles: user.roles || [],
+          isAdmin: user.isAdmin || false
+        }))),
         catchError(this.handleError)
       );
   }
 
   /**
-   * Get user by ID (admin only)
+   * Get user by ID (admin only) - FIXED ENDPOINT
    */
   getUserById(id: number): Observable<User> {
-    return this.http.get<UserData>(`${this.baseUrl}/admin/users/${id}`, this.getHttpOptions())
+    return this.http.get<User>(`${this.baseUrl}/${id}`, this.getHttpOptions()) // Changed from /admin/users/${id} to /api/users/${id}
       .pipe(
-        map(userData => this.convertToUser(userData)),
+        map(user => ({
+          id: user.id,
+          username: user.username,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          email: user.email,
+          roles: user.roles || [],
+          isAdmin: user.isAdmin || false
+        })),
         catchError(this.handleError)
       );
   }
 
   /**
-   * Update user (admin only)
+   * Update user (admin only) - FIXED ENDPOINT
    */
   updateUser(userId: number, userData: Partial<UserRegistrationData>): Observable<User> {
     const sanitizedData = this.sanitizeUpdateData(userData);
 
-    return this.http.put<UserData>(`${this.baseUrl}/admin/users/${userId}`, sanitizedData, this.getHttpOptions())
+    return this.http.put<User>(`${this.baseUrl}/${userId}`, sanitizedData, this.getHttpOptions()) // Changed from /admin/users/${userId} to /api/users/${userId}
       .pipe(
-        map(response => this.convertToUser(response)),
+        map(user => ({
+          id: user.id,
+          username: user.username,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          email: user.email,
+          roles: user.roles || [],
+          isAdmin: user.isAdmin || false
+        })),
         catchError(this.handleError)
       );
   }
 
   /**
-   * Delete user (admin only)
+   * Delete user (admin only) - FIXED ENDPOINT
    */
   deleteUser(userId: number): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/admin/users/${userId}`, this.getHttpOptions())
+    return this.http.delete(`${this.baseUrl}/${userId}`, this.getHttpOptions()) // Changed from /admin/users/${userId} to /api/users/${userId}
       .pipe(
         catchError(this.handleError)
       );
   }
 
   /**
-   * Register new user (admin only)
+   * Register new user (admin only) - FIXED TO USE REGISTER ENDPOINT
    */
   registerUser(userData: UserRegistrationData): Observable<User> {
     // Validate and sanitize data
@@ -284,9 +308,17 @@ export class UserService {
 
     const sanitizedData = this.sanitizeRegistrationData(userData);
 
-    return this.http.post<UserData>(`${this.baseUrl}/admin/users`, sanitizedData, this.getHttpOptions())
+    return this.http.post<any>(`${this.baseUrl}/register`, sanitizedData, this.getHttpOptions()) // Use the register endpoint
       .pipe(
-        map(response => this.convertToUser(response)),
+        map(response => ({
+          id: response.userId || 0,
+          username: response.username || '',
+          firstname: response.firstname || '',
+          lastname: response.lastname || '',
+          email: response.email || '',
+          roles: response.roles || ['ROLE_USER'],
+          isAdmin: response.isAdmin || false
+        })),
         catchError(this.handleError)
       );
   }

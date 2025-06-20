@@ -71,15 +71,66 @@
     </div>
 
     <div *ngIf="!isLoading && flowers.length > 0" class="flower-grid">
-      <div *ngFor="let flower of flowers.slice(0, 6)" class="flower-card">
-        <img [src]="flower.imageUrl" [alt]="flower.name" class="flower-image">
-        <h3>{{flower.name}}</h3>
-        <p class="flower-meaning">{{flower.meaning}}</p>
-        <p class="flower-price">CHF {{flower.price}}</p>
-        <span class="availability" [class.available]="flower.availablity === 'Available'">
-          {{flower.availablity}}
-        </span>
+      <div *ngFor="let flower of flowers.slice(0, 6)"
+           class="flower-card clickable"
+           (click)="openFlowerDetail(flower)"
+           [title]="'Click to view details for ' + flower.name"
+           (mouseenter)="debugFlower(flower)">
+
+        <img [src]="getFlowerImageUrl(flower.imageUrl)"
+             [alt]="flower.name"
+             class="flower-image"
+             (error)="onFlowerImageError($event)"
+             loading="lazy">
+
+        <div class="flower-info">
+          <h3>{{flower.name}}</h3>
+          <p class="flower-meaning">{{flower.meaning}}</p>
+          <p class="flower-price">€{{flower.price}}</p>
+          <span class="availability"
+                [class.available]="flower.availablity === 'Available'"
+                [class.unavailable]="flower.availablity !== 'Available'">
+            {{flower.availablity}}
+          </span>
+
+          <!-- FIXED: Debug info using component methods -->
+          <div class="debug-info" style="font-size: 10px; color: #999; margin-top: 5px;">
+            ID: {{getFlowerIdDisplay(flower)}} | Type: {{getFlowerIdType(flower)}}
+          </div>
+        </div>
+
+        <!-- Click overlay for better UX -->
+        <div class="click-overlay">
+          <i class="icon">👁️</i>
+          <span>View Details</span>
+        </div>
       </div>
+    </div>
+
+    <div *ngIf="!isLoading && flowers.length === 0" class="no-flowers">
+      <p>No flowers available at the moment.</p>
+      <button *ngIf="permissionService.canPerform('create-flower')"
+              (click)="createFlower()"
+              class="btn btn-primary">
+        Add First Flower
+      </button>
+    </div>
+
+    <!-- View All Flowers Button -->
+    <div class="view-all-section">
+      <button (click)="viewFlowers()" class="btn btn-primary view-all-btn">
+        View All Flowers →
+      </button>
+    </div>
+
+    <!-- FIXED: Debug Panel using component methods -->
+    <div class="debug-panel" style="background: #f8f9fa; padding: 15px; margin: 20px 0; border-radius: 5px; border-left: 4px solid #007bff;">
+      <h4>🐛 Debug Info</h4>
+      <p><strong>Flowers loaded:</strong> {{ flowers.length }}</p>
+      <p><strong>Is Authenticated:</strong> {{ isAuthenticated() }}</p>
+      <p><strong>Can View Catalog:</strong> {{ permissionService.canView('flower-catalog') }}</p>
+      <button class="btn btn-sm btn-info" (click)="debugPermissions()">Log Permissions</button>
+      <button class="btn btn-sm btn-warning" (click)="loadFlowers()">Reload Flowers</button>
     </div>
   </div>
 
