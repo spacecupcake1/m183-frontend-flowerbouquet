@@ -1,10 +1,16 @@
+// src/app/pages/main/main.component.ts
+
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { User } from '../../data/user';
+import { Flower } from '../../data/flower';
 import { AuthService } from '../../service/auth.service';
-import { Flower, FlowerService } from '../../service/flower.service';
-import { PermissionService } from '../../service/permission.service';
+import { FlowerService } from '../../service/flower.service';
+import { ValidationService } from '../../service/validation.service';
+
+interface BouquetItem {
+  flower: Flower;
+  quantity: number;
+}
 
 @Component({
   selector: 'app-main',
@@ -12,220 +18,365 @@ import { PermissionService } from '../../service/permission.service';
   styleUrls: ['./main.component.css']
 })
 export class MainComponent implements OnInit, OnDestroy {
-
-  currentUser: User | null = null;
   flowers: Flower[] = [];
-  isLoading = false;
-  error: string | null = null;
+  filteredFlowers: Flower[] = [];
+  searchTerm: string = '';
+  selectedColor: string = '';
+  priceRange: number = 100;
+  availabilityFilter: string = '';
 
-  private subscription = new Subscription();
+  // Bouquet management
+  bouquet: BouquetItem[] = [];
+  showCheckoutModal: boolean = false;
+  showOrderConfirmation: boolean = false;
+  isLoading: boolean = false;
+  error: string = '';
+
+  // Available filter options
+  availableColors: string[] = [];
+  maxPrice: number = 100;
+
+  private subscriptions: Subscription[] = [];
 
   constructor(
-    private router: Router,
-    public authService: AuthService,
-    public permissionService: PermissionService,
-    private flowerService: FlowerService
+    private flowerService: FlowerService,
+    private authService: AuthService,
+    private validationService: ValidationService
   ) {}
 
   ngOnInit(): void {
-    console.log('MainComponent ngOnInit');
-
-    // Subscribe to authentication state
-    this.subscription.add(
-      this.authService.currentUser.subscribe(user => {
-        this.currentUser = user;
-        console.log('Current user:', user);
-        if (user) {
-          this.loadFlowers();
-        }
-      })
-    );
+    this.loadFlowers();
   }
 
   ngOnDestroy(): void {
-    this.subscription.unsubscribe();
+    this.subscriptions.forEach(sub => sub.unsubscribe());
   }
 
+  /**
+   * Load all flowers from the service
+   */
   loadFlowers(): void {
-    if (!this.permissionService.canView('flower-catalog')) {
-      console.log('User cannot view flower catalog');
-      return;
-    }
-
-    console.log('Loading flowers...');
     this.isLoading = true;
-    this.error = null;
+    this.error = '';
 
-    this.subscription.add(
-      this.flowerService.getAllFlowers().subscribe({
-        next: (flowers) => {
-          console.log('Flowers loaded:', flowers);
-          this.flowers = flowers;
-          this.isLoading = false;
-        },
-        error: (error) => {
-          console.error('Error loading flowers:', error);
-          this.error = 'Failed to load flowers';
-          this.isLoading = false;
-        }
-      })
-    );
+    const flowersSub = this.flowerService.getAllFlowers().subscribe({
+      next: (flowers) => {
+        this.flowers = flowers;
+        this.filteredFlowers = flowers;
+        this.setupFilterOptions();
+        this.isLoading = false;
+      },
+      error: (error) => {
+        this.error = 'Failed to load flowers. Please try again.';
+        this.isLoading = false;
+        console.error('Error loading flowers:', error);
+      }
+    });
+
+    this.subscriptions.push(flowersSub);
   }
 
-  // ========== FLOWER NAVIGATION METHODS (FIXED) ==========
+  /**
+   * Setup filter options based on available flowers
+   */
+  private setupFilterOptions(): void {
+    // Extract unique colors
+    this.availableColors = [...new Set(this.flowers.map(f => f.color))].sort();
+
+    // Find maximum price
+    this.maxPrice = Math.max(...this.flowers.map(f => f.price), 100);
+    this.priceRange = this.maxPrice;
+  }
 
   /**
-   * Navigate to flower details page - FIXED: Use flower.id not entire object
+   * Apply filters to the flower list
    */
-  openFlowerDetail(flower: Flower): void {
-    console.log('Opening flower detail for:', flower);
+  applyFilters(): void {
+    this.filteredFlowers = this.flowers.filter(flower => {
+      // Search term filter
+      const matchesSearch = !this.searchTerm ||
+        flower.name.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        (flower.meaning && flower.meaning.toLowerCase().includes(this.searchTerm.toLowerCase()));
 
-    if (!flower) {
-      console.error('Flower is null or undefined');
+      // Color filter
+      const matchesColor = !this.selectedColor || flower.color === this.selectedColor;
+
+      // Price filter
+      const matchesPrice = flower.price <= this.priceRange;
+
+      // Availability filter
+      const matchesAvailability = !this.availabilityFilter ||
+        flower.availablity?.toLowerCase() === this.availabilityFilter.toLowerCase();
+
+      return matchesSearch && matchesColor && matchesPrice && matchesAvailability;
+    });
+  }
+
+  /**
+   * Handle search input
+   */
+  onSearchChange(): void {
+    // Validate search input for security
+    if (this.searchTerm && !this.validationService.validateUserInput(this.searchTerm)) {
+      this.error = 'Invalid search term. Please use only letters, numbers, and spaces.';
+      return;
+    }
+    this.error = '';
+    this.applyFilters();
+  }
+
+  /**
+   * Handle filter changes
+   */
+  onFilterChange(): void {
+    this.applyFilters();
+  }
+
+  /**
+   * Clear all filters
+   */
+  clearFilters(): void {
+    this.searchTerm = '';
+    this.selectedColor = '';
+    this.priceRange = this.maxPrice;
+    this.availabilityFilter = '';
+    this.filteredFlowers = this.flowers;
+    this.error = '';
+  }
+
+  /**
+   * Add flower to bouquet
+   */
+  addToBouquet(flower: Flower): void {
+    console.log('=== ADD TO BOUQUET DEBUG ===');
+    console.log('Flower:', flower);
+    console.log('Flower ID:', flower.id);
+    console.log('Is Authenticated:', this.authService.isAuthenticated());
+    console.log('Flower Availability:', flower.availablity);
+    console.log('Is Available:', this.isFlowerAvailable(flower));
+
+    if (!this.authService.isAuthenticated()) {
+      this.error = 'Please log in to add flowers to your bouquet.';
+      console.log('❌ User not authenticated');
       return;
     }
 
+    // Check if flower has valid id
     if (!flower.id) {
-      console.error('Flower ID is missing:', flower);
-      alert('Unable to view flower details - ID missing');
+      this.error = 'Invalid flower data.';
+      console.log('❌ Flower missing ID');
       return;
     }
 
-    // FIXED: Use flower.id (number) instead of flower (object)
-    console.log('Navigating to flower ID:', flower.id);
-    this.router.navigate(['/flowers', flower.id]);
+    // Check if flower is available (case insensitive)
+    if (!this.isFlowerAvailable(flower)) {
+      this.error = 'This flower is currently not available.';
+      console.log('❌ Flower not available');
+      return;
+    }
+
+    const existingItem = this.bouquet.find(item => item.flower.id === flower.id);
+
+    if (existingItem) {
+      existingItem.quantity += 1;
+      console.log('✅ Updated quantity for existing flower');
+    } else {
+      this.bouquet.push({ flower, quantity: 1 });
+      console.log('✅ Added new flower to bouquet');
+    }
+
+    this.error = '';
+    console.log('✅ Successfully added to bouquet:', flower.name);
+    console.log('Current bouquet:', this.bouquet);
   }
 
   /**
-   * Navigate to flower list/browse page
+   * Remove flower from bouquet
    */
-  viewFlowers(): void {
-    console.log('Viewing flowers');
-    if (this.permissionService.canView('flower-catalog')) {
-      this.router.navigate(['/flowers']);
-    } else {
-      alert('You need to be logged in to view flowers.');
-      this.router.navigate(['/login']);
+  removeFromBouquet(flowerId: number): void {
+    this.bouquet = this.bouquet.filter(item => item.flower.id !== flowerId);
+  }
+
+  /**
+   * Update quantity of flower in bouquet
+   */
+  updateQuantity(flowerId: number, quantity: number): void {
+    if (quantity <= 0) {
+      this.removeFromBouquet(flowerId);
+      return;
+    }
+
+    const item = this.bouquet.find(item => item.flower.id === flowerId);
+    if (item) {
+      item.quantity = quantity;
     }
   }
 
   /**
-   * Create new flower (admin only)
+   * Get total price of bouquet
    */
-  createFlower(): void {
-    console.log('Creating flower');
-    if (this.permissionService.canPerform('create-flower')) {
-      this.router.navigate(['/admin/flowers'], { queryParams: { create: true } });
-    } else {
-      alert('Admin privileges required.');
-    }
+  getBouquetTotal(): number {
+    return this.bouquet.reduce((total, item) => total + (item.flower.price * item.quantity), 0);
   }
 
   /**
-   * Manage flowers (admin only)
+   * Get total items in bouquet
    */
-  manageFlowers(): void {
-    console.log('Managing flowers');
-    if (this.permissionService.canPerform('edit-flower')) {
-      this.router.navigate(['/admin/flowers']);
-    } else {
-      alert('Admin privileges required.');
-    }
+  getBouquetItemCount(): number {
+    return this.bouquet.reduce((count, item) => count + item.quantity, 0);
   }
 
   /**
-   * Navigate to admin panel
+   * Show checkout modal
    */
-  openAdminPanel(): void {
-    console.log('Opening admin panel');
-    if (this.permissionService.canView('admin-panel')) {
-      this.router.navigate(['/admin']);
-    } else {
-      alert('Admin privileges required.');
+  proceedToCheckout(): void {
+    if (this.bouquet.length === 0) {
+      this.error = 'Your bouquet is empty. Please add some flowers first.';
+      return;
     }
+
+    if (!this.authService.isAuthenticated()) {
+      this.error = 'Please log in to proceed with checkout.';
+      return;
+    }
+
+    this.showCheckoutModal = true;
+    this.error = '';
   }
 
-  // ========== AUTHENTICATION METHODS ==========
+  /**
+   * Close checkout modal
+   */
+  closeCheckoutModal(): void {
+    this.showCheckoutModal = false;
+  }
 
+  /**
+   * Confirm and process the order
+   */
+  confirmOrder(): void {
+    if (this.bouquet.length === 0) {
+      this.error = 'Cannot place empty order.';
+      return;
+    }
+
+    this.isLoading = true;
+    this.error = '';
+
+    // Simulate order processing (replace with actual API call)
+    setTimeout(() => {
+      try {
+        // Here you would typically call an order service
+        // this.orderService.createOrder(this.bouquet).subscribe(...)
+
+        // For now, just simulate success
+        this.isLoading = false;
+        this.showCheckoutModal = false;
+        this.showOrderConfirmation = true;
+
+        // Clear bouquet after successful order
+        setTimeout(() => {
+          this.clearBouquet();
+        }, 100);
+
+        // Auto-hide confirmation after 3 seconds
+        setTimeout(() => {
+          this.showOrderConfirmation = false;
+        }, 3000);
+
+      } catch (error) {
+        this.isLoading = false;
+        this.error = 'Failed to process order. Please try again.';
+        console.error('Order processing error:', error);
+      }
+    }, 1500); // Simulate processing time
+  }
+
+  /**
+   * Clear the entire bouquet
+   */
+  clearBouquet(): void {
+    this.bouquet = [];
+    this.error = '';
+    console.log('Bouquet cleared for next order');
+  }
+
+  /**
+   * Close order confirmation
+   */
+  closeOrderConfirmation(): void {
+    this.showOrderConfirmation = false;
+  }
+
+  /**
+   * Check if user is authenticated
+   */
   isAuthenticated(): boolean {
     return this.authService.isAuthenticated();
   }
 
+  /**
+   * Check if user is admin
+   */
+  isAdmin(): boolean {
+    return this.authService.hasRole('ROLE_ADMIN');
+  }
+
+  /**
+   * Get current user display name
+   */
   getUserDisplayName(): string {
-    const user = this.authService.getCurrentUserValue();
-    if (user) {
-      return `${user.firstname} ${user.lastname}`.trim();
-    }
-    return 'Guest';
-  }
-
-  logout(): void {
-    console.log('Logging out');
-    this.authService.logout().subscribe({
-      next: () => {
-        this.router.navigate(['/login']);
-      },
-      error: (error) => {
-        console.error('Logout error:', error);
-        // Force logout even if server request fails
-        this.authService.clearAuthState();
-        this.router.navigate(['/login']);
-      }
-    });
-  }
-
-  // ========== UTILITY METHODS ==========
-
-  getFlowerImageUrl(imageUrl: string): string {
-    if (!imageUrl) return 'assets/images/default-flower.jpg';
-
-    if (imageUrl.startsWith('images/')) {
-      return `assets/${imageUrl}`;
-    }
-
-    return imageUrl;
-  }
-
-  onFlowerImageError(event: any): void {
-    console.warn('Image failed to load:', event.target.src);
-    event.target.src = 'assets/images/default-flower.jpg';
-  }
-
-  // ========== FIXED: HELPER METHODS FOR TEMPLATE ==========
-
-  /**
-   * Get the type of flower.id for debugging
-   */
-  getFlowerIdType(flower: Flower): string {
-    return typeof flower?.id;
+    return this.authService.getUserDisplayName();
   }
 
   /**
-   * Get a safe flower ID for display
+   * Format price for display
    */
-  getFlowerIdDisplay(flower: Flower): string {
-    return flower?.id ? flower.id.toString() : 'N/A';
+  formatPrice(price: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(price);
   }
 
-  // ========== DEBUG METHODS ==========
-
-  debugFlower(flower: Flower): void {
-    console.log('Flower debug:', {
-      flower: flower,
-      id: flower?.id,
-      name: flower?.name,
-      type: typeof flower?.id
-    });
+  /**
+   * Sanitize display text
+   */
+  sanitizeText(text: string): string {
+    return this.validationService.sanitizeForDisplay ?
+           this.validationService.sanitizeForDisplay(text) : text;
   }
 
-  debugPermissions(): void {
-    console.log('Permissions debug:', {
-      isAuthenticated: this.isAuthenticated(),
-      canViewCatalog: this.permissionService.canView('flower-catalog'),
-      canCreateFlower: this.permissionService.canPerform('create-flower'),
-      canEditFlower: this.permissionService.canPerform('edit-flower'),
-      canViewAdmin: this.permissionService.canView('admin-panel'),
-      currentUser: this.currentUser
-    });
+  /**
+   * Handle image loading errors
+   */
+  onImageError(event: Event): void {
+    const target = event.target as HTMLImageElement;
+    if (target) {
+      target.src = 'assets/images/default-flower.jpg';
+    }
+  }
+
+  /**
+   * Track by function for flower list performance
+   */
+  trackByFlowerId(index: number, flower: Flower): number | undefined {
+    return flower.id;
+  }
+
+  /**
+   * Track by function for bouquet items
+   */
+  trackByBouquetItem(index: number, item: BouquetItem): number | undefined {
+    return item.flower.id;
+  }
+
+  /**
+   * Check if flower is available (case insensitive)
+   */
+  isFlowerAvailable(flower: Flower): boolean {
+    if (!flower.availablity) return false;
+    const availability = flower.availablity.toLowerCase();
+    return availability === 'available' || availability === 'true';
   }
 }
