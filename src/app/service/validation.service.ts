@@ -564,4 +564,38 @@ export class ValidationService {
       return null;
     };
   }
+
+   /**
+   * Sanitize display text to prevent XSS in templates
+   */
+  sanitizeForDisplay(text: string): string {
+    if (!text) return '';
+
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;')
+      .replace(/\//g, '&#x2F;');
+  }
+
+  /**
+   * Validate user input for basic safety
+   */
+  validateUserInput(input: string): boolean {
+    if (!input) return true;
+
+    const dangerousPatterns = [
+      /<script[\s\S]*?>[\s\S]*?<\/script>/gi,
+      /javascript:/gi,
+      /vbscript:/gi,
+      /on\w+\s*=/gi,
+      /<iframe[\s\S]*?>/gi,
+      /<object[\s\S]*?>/gi,
+      /<embed[\s\S]*?>/gi
+    ];
+
+    return !dangerousPatterns.some(pattern => pattern.test(input));
+  }
 }

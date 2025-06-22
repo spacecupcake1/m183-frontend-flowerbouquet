@@ -9,6 +9,19 @@ export interface Flower {
   imageUrl: string;
 }
 
+export interface FlowerCorrected {
+  id?: number;
+  name: string;
+  meaning?: string;
+  availability: string;  // Corrected spelling
+  info?: string;
+  color: string;
+  price: number;
+  imageUrl?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface FlowerCreateRequest {
   name: string;
   meaning: string;
