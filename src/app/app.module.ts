@@ -55,7 +55,9 @@ import { ProfileComponent } from './components/profile/profile.component';
 import { UnauthorizedComponent } from './components/unauthorized/unauthorized.component';
 import { AdminGuard } from './guards/admin.guard';
 import { AuthGuard } from './guards/auth.guard';
+import { SecurityInterceptor } from './interceptors/security.interceptor';
 import { AuthInterceptor } from './service/auth.interceptor';
+import { EnhancedValidationService } from './service/enhanced-validation.service';
 import { SessionInterceptor } from './service/session.interceptor';
 
 // DIRECTIVES - ADD THESE
@@ -118,9 +120,10 @@ import { RoleBasedDisplayDirective } from './directives/role-based-display.direc
     UserService,
     ValidationService,
     AuthService,
-    PermissionService, // ADD THIS
+    PermissionService,
     AuthGuard,
     AdminGuard,
+    EnhancedValidationService,
 
     {
       provide: HTTP_INTERCEPTORS,
@@ -130,6 +133,11 @@ import { RoleBasedDisplayDirective } from './directives/role-based-display.direc
     {
       provide: HTTP_INTERCEPTORS,
       useClass: AuthInterceptor,
+      multi: true
+    },
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: SecurityInterceptor,
       multi: true
     }
   ],
