@@ -54,6 +54,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
   onLogout(): void {
     if (this.isLoading) return;
 
+    const confirmLogout = confirm('Are you sure you want to log out?');
+    if (!confirmLogout) return;
+
     this.isLoading = true;
 
     this.authService.logout().subscribe({
@@ -83,57 +86,113 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Navigation methods with role-based access control.
+   * Navigate to main page
    */
-
-  navigateToProfile(): void {
-    if (this.isLoggedIn) {
-      this.router.navigate(['/profile']);
-    }
-  }
-
-  navigateToAdminPanel(): void {
-    if (this.isAdmin) {
-      this.router.navigate(['/admin']);
-    }
-  }
-
-  navigateToUserManagement(): void {
-    if (this.isAdmin) {
-      this.router.navigate(['/admin/users']);
-    }
-  }
-
-  navigateToSettings(): void {
-    if (this.isLoggedIn) {
-      this.router.navigate(['/settings']);
-    }
-  }
-
   navigateToMain(): void {
     this.router.navigate(['/main']);
   }
 
+  /**
+   * Navigate to profile page (authenticated users only)
+   */
+  navigateToProfile(): void {
+    if (this.isLoggedIn) {
+      this.router.navigate(['/profile']);
+    } else {
+      alert('Please log in to view your profile.');
+      this.router.navigate(['/login']);
+    }
+  }
+
+  /**
+   * Navigate to settings page (authenticated users only)
+   */
+  navigateToSettings(): void {
+    if (this.isLoggedIn) {
+      this.router.navigate(['/settings']);
+    } else {
+      alert('Please log in to access settings.');
+      this.router.navigate(['/login']);
+    }
+  }
+
+  /**
+   * Navigate to flower management (admin only)
+   */
+  navigateToFlowerManagement(): void {
+    if (this.isAdmin) {
+      this.router.navigate(['/admin/flowers']);
+    } else {
+      alert('Admin access required.');
+      this.router.navigate(['/unauthorized']);
+    }
+  }
+
+  /**
+   * Navigate to admin panel (admin only)
+   */
+  navigateToAdminPanel(): void {
+    if (this.isAdmin) {
+      this.router.navigate(['/admin']);
+    } else {
+      alert('Admin access required.');
+      this.router.navigate(['/unauthorized']);
+    }
+  }
+
+  /**
+   * Navigate to user management (admin only)
+   */
+  navigateToUserManagement(): void {
+    if (this.isAdmin) {
+      this.router.navigate(['/admin/users']);
+    } else {
+      alert('Admin access required.');
+      this.router.navigate(['/unauthorized']);
+    }
+  }
+
+  /**
+   * Navigate to login page
+   */
   navigateToLogin(): void {
     this.router.navigate(['/login']);
   }
 
+  /**
+   * Navigate to register page
+   */
   navigateToRegister(): void {
     this.router.navigate(['/register']);
   }
 
   /**
-   * Permission checking methods for template usage.
+   * Navigate to bouquet/cart page (authenticated users only)
    */
-
-  canViewAdminPanel(): boolean {
-    return this.isLoggedIn && this.isAdmin;
+  navigateToBouquet(): void {
+    if (this.isLoggedIn) {
+      this.router.navigate(['/customizing']);
+    } else {
+      alert('Please log in to view your bouquet.');
+      this.router.navigate(['/login']);
+    }
   }
 
-  canViewUserManagement(): boolean {
-    return this.isLoggedIn && this.isAdmin;
+  /**
+   * Navigate to checkout page (authenticated users only)
+   */
+  navigateToCheckout(): void {
+    if (this.isLoggedIn) {
+      this.router.navigate(['/checkout']);
+    } else {
+      alert('Please log in to proceed with checkout.');
+      this.router.navigate(['/login']);
+    }
   }
 
+  /**
+   * Permission check methods for template usage
+   */
   canViewProfile(): boolean {
     return this.isLoggedIn;
   }
@@ -142,88 +201,91 @@ export class HeaderComponent implements OnInit, OnDestroy {
     return this.isLoggedIn;
   }
 
-  hasRole(roleName: string): boolean {
-    return this.authService.hasRole(roleName);
+  canViewAdminPanel(): boolean {
+    return this.isAdmin;
+  }
+
+  canViewFlowerManagement(): boolean {
+    return this.isAdmin;
+  }
+
+  canViewUserManagement(): boolean {
+    return this.isAdmin;
+  }
+
+  canViewBouquet(): boolean {
+    return this.isLoggedIn;
   }
 
   /**
-   * Gets display name for the current user.
+   * Check if user has specific role
+   */
+  hasRole(role: string): boolean {
+    return this.currentUser?.roles?.includes(role) || false;
+  }
+
+  /**
+   * Get user display name
    */
   getUserDisplayName(): string {
-    return this.userService.getUserDisplayName(this.currentUser);
+    if (!this.currentUser) return '';
+
+    if (this.currentUser.firstname && this.currentUser.lastname) {
+      return `${this.currentUser.firstname} ${this.currentUser.lastname}`;
+    }
+
+    return this.currentUser.username || 'User';
   }
 
   /**
-   * Gets user initials for avatar display.
+   * Get user initials for avatar
    */
   getUserInitials(): string {
-    return this.userService.getUserInitials(this.currentUser);
+    if (!this.currentUser) return '?';
+
+    if (this.currentUser.firstname && this.currentUser.lastname) {
+      return `${this.currentUser.firstname.charAt(0)}${this.currentUser.lastname.charAt(0)}`.toUpperCase();
+    }
+
+    return this.currentUser.username?.charAt(0).toUpperCase() || '?';
   }
 
   /**
-   * Gets CSS classes for user avatar based on role.
+   * Get user role display
    */
-  getAvatarClasses(): string {
-    const baseClasses = 'user-avatar';
+  getUserRoleDisplay(): string {
+    if (!this.currentUser) return '';
 
     if (this.isAdmin) {
-      return `${baseClasses} admin-avatar`;
-    } else if (this.hasRole('ROLE_MODERATOR')) {
-      return `${baseClasses} moderator-avatar`;
-    } else {
-      return `${baseClasses} user-avatar`;
+      return 'Administrator';
     }
-  }
 
-  /**
-   * Handle click outside dropdown to close it.
-   */
-  onDropdownBlur(): void {
-    // Add small delay to allow click events to process
-    setTimeout(() => {
-      const dropdown = document.querySelector('.user-dropdown');
-      if (dropdown) {
-        dropdown.classList.remove('show');
-      }
-    }, 150);
-  }
-
-  /**
-   * Toggle user dropdown menu.
-   */
-  toggleUserDropdown(): void {
-    const dropdown = document.querySelector('.user-dropdown');
-    if (dropdown) {
-      dropdown.classList.toggle('show');
+    if (this.currentUser.roles && this.currentUser.roles.length > 0) {
+      return this.currentUser.roles.map(role =>
+        role.replace('ROLE_', '').toLowerCase()
+      ).join(', ');
     }
+
+    return 'User';
   }
 
   /**
-   * Security helper: Sanitize display values to prevent XSS in templates.
+   * Check if user account is verified
    */
-  sanitizeForDisplay(value: string): string {
-    if (!value) return '';
-
-    // Basic HTML escape for display
-    return value
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#x27;');
+  isUserVerified(): boolean {
+    return this.currentUser?.emailVerified || false;
   }
 
   /**
-   * Get current user synchronously for template usage
+   * Debug method for development
    */
-  getCurrentUser(): User | null {
-    return this.authService.getCurrentUserValue();
-  }
-
-  /**
-   * Check if user is authenticated
-   */
-  isAuthenticated(): boolean {
-    return this.authService.isAuthenticated();
+  debugUserInfo(): void {
+    console.log('=== Header Component Debug ===');
+    console.log('Current User:', this.currentUser);
+    console.log('Is Logged In:', this.isLoggedIn);
+    console.log('Is Admin:', this.isAdmin);
+    console.log('User Display Name:', this.getUserDisplayName());
+    console.log('User Roles:', this.currentUser?.roles);
+    console.log('===============================');
   }
 }

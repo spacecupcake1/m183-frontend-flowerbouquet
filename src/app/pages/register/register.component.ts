@@ -78,7 +78,7 @@ export class RegisterComponent {
       };
 
       // Check for validation errors
-      const hasValidationError = Object.values(validationResults).some(result => !result.isValid);
+      const hasValidationError = Object.values(validationResults).some(result => !result.valid);
       if (hasValidationError) {
         this.isLoading = false;
         this.errorMessage = 'Please correct the input errors';
@@ -86,8 +86,8 @@ export class RegisterComponent {
         // Set field-specific errors
         Object.keys(validationResults).forEach(key => {
           const result = validationResults[key as keyof typeof validationResults];
-          if (!result.isValid && result.error) {
-            this.fieldErrors[key] = result.error;
+          if (!result.valid && result.errors.length > 0) {
+            this.fieldErrors[key] = result.errors[0];
           }
         });
         return;
@@ -95,14 +95,14 @@ export class RegisterComponent {
 
       // Prepare sanitized data
       const registrationData = {
-        username: validationResults.username.sanitized,
-        firstname: validationResults.firstname.sanitized,
-        lastname: validationResults.lastname.sanitized,
-        email: validationResults.email.sanitized,
-        password: validationResults.password.sanitized
+        username: validationResults.username.value,
+        firstname: validationResults.firstname.value,
+        lastname: validationResults.lastname.value,
+        email: validationResults.email.value,
+        password: validationResults.password.value
       };
 
-      this.userService.registerUser(registrationData).subscribe({
+      this.userService.register(registrationData).subscribe({
         next: (response) => {
           console.log('User registered successfully!', response);
           this.successMessage = 'Registration successful! Redirecting to login...';

@@ -1,69 +1,41 @@
 import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, Injector } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { AuthService } from './auth.service';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
 
   constructor(
-    private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private injector: Injector // Use Injector to avoid circular dependency
   ) {}
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-    // Add credentials to all requests for session-based auth
+    // Clone the request to add credentials for session-based auth
     const authReq = req.clone({
       setHeaders: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
+        'Content-Type': 'application/json'
       },
-      withCredentials: true
+      withCredentials: true // Important for session-based authentication
     });
 
     return next.handle(authReq).pipe(
       catchError((error: HttpErrorResponse) => {
-        // Handle different types of errors
+        // Handle authentication errors without injecting AuthService directly
         if (error.status === 401) {
-          // Unauthorized - clear auth state and redirect to login
-          this.handleUnauthorized();
+          console.warn('Authentication required - redirecting to login');
+          this.router.navigate(['/login'], {
+            queryParams: { message: 'Session expired. Please log in again.' }
+          });
         } else if (error.status === 403) {
-          // Forbidden - redirect to unauthorized page
-          this.handleForbidden();
-        } else if (error.status === 429) {
-          // Too many requests - show rate limit message
-          this.handleRateLimit(error);
-        } else if (error.status === 0) {
-          // Network error - possibly CORS or server down
-          this.handleNetworkError();
+          console.warn('Access forbidden - redirecting to unauthorized');
+          this.router.navigate(['/unauthorized']);
         }
 
-        return throwError(() => error);
+        return throwError(error);
       })
     );
-  }
-
-  private handleUnauthorized(): void {
-    this.authService.clearAuthState();
-    this.router.navigate(['/login'], {
-      queryParams: { message: 'Your session has expired. Please log in again.' }
-    });
-  }
-
-  private handleForbidden(): void {
-    this.router.navigate(['/unauthorized']);
-  }
-
-  private handleRateLimit(error: HttpErrorResponse): void {
-    const message = error.error?.message || 'Too many requests. Please try again later.';
-    // You can show a toast/notification here
-    console.warn('Rate limit exceeded:', message);
-  }
-
-  private handleNetworkError(): void {
-    // Handle network/CORS errors
-    console.error('Network error - check server connection');
   }
 }

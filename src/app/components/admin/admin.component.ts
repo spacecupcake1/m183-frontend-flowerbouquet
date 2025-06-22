@@ -808,7 +808,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       this.subscriptions.push(updateSub);
     } else {
       // Create new user
-      const createSub = this.userService.registerUser(userData).subscribe({
+      const createSub = this.userService.register(userData).subscribe({
         next: () => {
           this.closeUserModal();
           this.loadUsers();

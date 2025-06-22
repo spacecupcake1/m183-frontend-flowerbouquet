@@ -1,8 +1,3 @@
-<!--
-  Secure Header Component Template
-  Implements role-based access control with proper element hiding/showing
-  Elements are hidden from the DOM when user lacks permissions (not just CSS hidden)
--->
 <header class="app-header" role="banner">
   <nav class="navbar" role="navigation" aria-label="Main navigation">
 
@@ -14,6 +9,7 @@
         role="button"
         tabindex="0"
         aria-label="Go to main page">
+        <span class="brand-icon">🌸</span>
         <span class="brand-text">FlowerBouquet</span>
       </a>
     </div>
@@ -29,13 +25,25 @@
           role="button"
           tabindex="0"
           aria-label="Home">
-          <i class="icon-home" aria-hidden="true"></i>
+          <i class="icon-home" aria-hidden="true">🏠</i>
           <span>Home</span>
         </a>
       </div>
 
       <!-- Authenticated User Navigation -->
       <div class="nav-section auth-nav" *ngIf="isLoggedIn">
+
+        <!-- Bouquet Link (visible to all authenticated users) -->
+        <a
+          class="nav-link"
+          (click)="navigateToBouquet()"
+          role="button"
+          tabindex="0"
+          aria-label="My Bouquet"
+          *ngIf="canViewBouquet()">
+          <i class="icon-bouquet" aria-hidden="true">🛒</i>
+          <span>My Bouquet</span>
+        </a>
 
         <!-- Profile Link (visible to all authenticated users) -->
         <a
@@ -45,24 +53,24 @@
           tabindex="0"
           aria-label="My Profile"
           *ngIf="canViewProfile()">
-          <i class="icon-user" aria-hidden="true"></i>
+          <i class="icon-user" aria-hidden="true">👤</i>
           <span>Profile</span>
-        </a>
-
-        <!-- Settings Link (visible to all authenticated users) -->
-        <a
-          class="nav-link"
-          (click)="navigateToSettings()"
-          role="button"
-          tabindex="0"
-          aria-label="Settings"
-          *ngIf="canViewSettings()">
-          <i class="icon-settings" aria-hidden="true"></i>
-          <span>Settings</span>
         </a>
 
         <!-- Admin Navigation (only visible to admins) -->
         <div class="admin-nav" *ngIf="canViewAdminPanel()">
+
+          <!-- Flower Management Link -->
+          <a
+            class="nav-link admin-link"
+            (click)="navigateToFlowerManagement()"
+            role="button"
+            tabindex="0"
+            aria-label="Flower Management"
+            *ngIf="canViewFlowerManagement()">
+            <i class="icon-flower" aria-hidden="true">🌸</i>
+            <span>Flower Management</span>
+          </a>
 
           <!-- Admin Panel Link -->
           <a
@@ -71,7 +79,7 @@
             role="button"
             tabindex="0"
             aria-label="Admin Panel">
-            <i class="icon-admin" aria-hidden="true"></i>
+            <i class="icon-admin" aria-hidden="true">⚙️</i>
             <span>Admin Panel</span>
           </a>
 
@@ -83,7 +91,7 @@
             tabindex="0"
             aria-label="User Management"
             *ngIf="canViewUserManagement()">
-            <i class="icon-users" aria-hidden="true"></i>
+            <i class="icon-users" aria-hidden="true">👥</i>
             <span>User Management</span>
           </a>
         </div>
@@ -96,7 +104,7 @@
             role="button"
             tabindex="0"
             aria-label="Moderator Panel">
-            <i class="icon-moderator" aria-hidden="true"></i>
+            <i class="icon-moderator" aria-hidden="true">🛡️</i>
             <span>Moderator</span>
           </a>
         </div>
@@ -106,161 +114,143 @@
     <!-- User Authentication Section -->
     <div class="navbar-user">
 
-      <!-- Not Logged In: Show Login/Register -->
-      <div class="auth-buttons" *ngIf="!isLoggedIn">
+      <!-- Guest User Section (not logged in) -->
+      <div class="guest-section" *ngIf="!isLoggedIn">
         <button
-          class="btn btn-outline"
+          class="nav-btn login-btn"
           (click)="navigateToLogin()"
           type="button"
-          aria-label="Login to your account">
-          <i class="icon-login" aria-hidden="true"></i>
-          Login
+          aria-label="Log in">
+          <i class="icon-login" aria-hidden="true">🔐</i>
+          <span>Login</span>
         </button>
 
         <button
-          class="btn btn-primary"
+          class="nav-btn register-btn"
           (click)="navigateToRegister()"
           type="button"
-          aria-label="Create new account">
-          <i class="icon-register" aria-hidden="true"></i>
-          Register
+          aria-label="Register">
+          <i class="icon-register" aria-hidden="true">📝</i>
+          <span>Register</span>
         </button>
       </div>
 
-      <!-- Logged In: Show User Menu -->
-      <div class="user-menu" *ngIf="isLoggedIn">
+      <!-- Authenticated User Section -->
+      <div class="user-section" *ngIf="isLoggedIn">
 
-        <!-- User Avatar and Name -->
-        <div
-          class="user-info"
-          (click)="toggleUserDropdown()"
-          role="button"
-          tabindex="0"
-          aria-label="User menu"
-          aria-expanded="false"
-          aria-haspopup="true">
-
-          <!-- User Avatar -->
-          <div [class]="getAvatarClasses()" aria-hidden="true">
-            {{ getUserInitials() }}
+        <!-- User Info Display -->
+        <div class="user-info">
+          <div class="user-avatar">
+            <span class="avatar-initials">{{ getUserInitials() }}</span>
+            <div class="user-status" *ngIf="!isUserVerified()" class="unverified" title="Email not verified">⚠️</div>
           </div>
 
-          <!-- User Name and Role Badge -->
           <div class="user-details">
-            <span class="user-name">{{ sanitizeForDisplay(getUserDisplayName()) }}</span>
-
-            <!-- Role Badge -->
-            <span
-              class="role-badge"
-              [class.admin-badge]="isAdmin"
-              [class.moderator-badge]="hasRole('ROLE_MODERATOR')"
-              [class.user-badge]="!isAdmin && !hasRole('ROLE_MODERATOR')"
-              *ngIf="currentUser">
-              {{ isAdmin ? 'Admin' : (hasRole('ROLE_MODERATOR') ? 'Moderator' : 'User') }}
-            </span>
+            <span class="user-name">{{ getUserDisplayName() }}</span>
+            <span class="user-role" *ngIf="isAdmin">{{ getUserRoleDisplay() }}</span>
           </div>
-
-          <!-- Dropdown Arrow -->
-          <i class="icon-chevron-down dropdown-arrow" aria-hidden="true"></i>
         </div>
 
-        <!-- User Dropdown Menu -->
-        <div
-          class="user-dropdown"
-          role="menu"
-          aria-label="User menu options"
-          (blur)="onDropdownBlur()">
+        <!-- User Menu Dropdown -->
+        <div class="user-menu">
+          <button
+            class="menu-toggle"
+            type="button"
+            aria-label="User menu"
+            [attr.aria-expanded]="false">
+            <i class="icon-dropdown" aria-hidden="true">▼</i>
+          </button>
 
-          <!-- User Info Header -->
-          <div class="dropdown-header" role="menuitem">
-            <div class="user-email">{{ sanitizeForDisplay(currentUser?.email || '') }}</div>
-            <div class="user-id" *ngIf="currentUser">ID: {{ currentUser.id }}</div>
-          </div>
+          <div class="dropdown-menu">
+            <!-- Profile Link -->
+            <a
+              class="dropdown-item"
+              (click)="navigateToProfile()"
+              role="button"
+              tabindex="0">
+              <i class="icon-profile" aria-hidden="true">👤</i>
+              <span>My Profile</span>
+            </a>
 
-          <div class="dropdown-divider" role="separator"></div>
+            <!-- Settings Link -->
+            <a
+              class="dropdown-item"
+              (click)="navigateToSettings()"
+              role="button"
+              tabindex="0"
+              *ngIf="canViewSettings()">
+              <i class="icon-settings" aria-hidden="true">⚙️</i>
+              <span>Settings</span>
+            </a>
 
-          <!-- Profile Link -->
-          <a
-            class="dropdown-item"
-            (click)="navigateToProfile()"
-            role="menuitem"
-            tabindex="0"
-            *ngIf="canViewProfile()">
-            <i class="icon-user" aria-hidden="true"></i>
-            My Profile
-          </a>
+            <!-- Admin Quick Links -->
+            <div class="dropdown-divider" *ngIf="isAdmin"></div>
 
-          <!-- Settings Link -->
-          <a
-            class="dropdown-item"
-            (click)="navigateToSettings()"
-            role="menuitem"
-            tabindex="0"
-            *ngIf="canViewSettings()">
-            <i class="icon-settings" aria-hidden="true"></i>
-            Settings
-          </a>
-
-          <!-- Admin Links (only visible to admins) -->
-          <div *ngIf="canViewAdminPanel()">
-            <div class="dropdown-divider" role="separator"></div>
+            <a
+              class="dropdown-item admin-item"
+              (click)="navigateToFlowerManagement()"
+              role="button"
+              tabindex="0"
+              *ngIf="canViewFlowerManagement()">
+              <i class="icon-flower-admin" aria-hidden="true">🌸</i>
+              <span>Manage Flowers</span>
+            </a>
 
             <a
               class="dropdown-item admin-item"
               (click)="navigateToAdminPanel()"
-              role="menuitem"
-              tabindex="0">
-              <i class="icon-admin" aria-hidden="true"></i>
-              Admin Panel
-            </a>
-
-            <a
-              class="dropdown-item admin-item"
-              (click)="navigateToUserManagement()"
-              role="menuitem"
+              role="button"
               tabindex="0"
-              *ngIf="canViewUserManagement()">
-              <i class="icon-users" aria-hidden="true"></i>
-              User Management
+              *ngIf="canViewAdminPanel()">
+              <i class="icon-admin-panel" aria-hidden="true">🔧</i>
+              <span>Admin Dashboard</span>
             </a>
+
+            <!-- Logout -->
+            <div class="dropdown-divider"></div>
+            <button
+              class="dropdown-item logout-item"
+              (click)="onLogout()"
+              type="button"
+              [disabled]="isLoading">
+              <i class="icon-logout" aria-hidden="true">🚪</i>
+              <span *ngIf="!isLoading">Logout</span>
+              <span *ngIf="isLoading">Logging out...</span>
+            </button>
           </div>
-
-          <div class="dropdown-divider" role="separator"></div>
-
-          <!-- Logout Button -->
-          <button
-            class="dropdown-item logout-item"
-            (click)="onLogout()"
-            type="button"
-            role="menuitem"
-            tabindex="0"
-            [disabled]="isLoading"
-            aria-label="Logout from your account">
-            <i class="icon-logout" aria-hidden="true"></i>
-            <span *ngIf="!isLoading">Logout</span>
-            <span *ngIf="isLoading">Logging out...</span>
-          </button>
         </div>
       </div>
+    </div>
+
+    <!-- Mobile Menu Toggle (for responsive design) -->
+    <div class="mobile-menu-toggle" *ngIf="false">
+      <button
+        class="mobile-toggle-btn"
+        type="button"
+        aria-label="Toggle mobile menu">
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+      </button>
     </div>
   </nav>
 
   <!-- Loading Overlay -->
-  <div class="loading-overlay" *ngIf="isLoading" role="status" aria-live="polite">
-    <div class="loading-spinner" aria-hidden="true"></div>
-    <span class="sr-only">Processing...</span>
+  <div class="loading-overlay" *ngIf="isLoading">
+    <div class="loading-spinner"></div>
+  </div>
+
+  <!-- Admin Badge (visible notification for admins) -->
+  <div class="admin-badge" *ngIf="isAdmin && isLoggedIn">
+    <span class="badge-icon">👑</span>
+    <span class="badge-text">Admin</span>
+  </div>
+
+  <!-- Development Debug Info (remove in production) -->
+  <div class="debug-info" *ngIf="false" style="position: absolute; top: 60px; right: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px; font-size: 12px;">
+    <div>User: {{ currentUser?.username || 'None' }}</div>
+    <div>Admin: {{ isAdmin ? 'Yes' : 'No' }}</div>
+    <div>Logged In: {{ isLoggedIn ? 'Yes' : 'No' }}</div>
+    <button (click)="debugUserInfo()" style="background: #333; color: white; border: 1px solid #666; padding: 2px 5px; margin-top: 5px;">Debug</button>
   </div>
 </header>
-
-<!-- Screen Reader Only Content -->
-<div class="sr-only" aria-live="polite">
-  <span *ngIf="isLoggedIn">Logged in as {{ getUserDisplayName() }}</span>
-  <span *ngIf="!isLoggedIn">Not logged in</span>
-  <span *ngIf="isAdmin">Administrator privileges active</span>
-</div>
-
-<!-- Security Note:
-     All user-displayed content is sanitized using sanitizeForDisplay() method
-     All role-based elements use *ngIf to completely remove them from DOM when user lacks permissions
-     This prevents manual DOM manipulation or CSS overrides from revealing hidden functionality
--->

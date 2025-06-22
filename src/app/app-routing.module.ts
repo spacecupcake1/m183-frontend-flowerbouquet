@@ -3,7 +3,7 @@ import { RouterModule, Routes } from '@angular/router';
 import { AdminGuard } from './guards/admin.guard';
 import { AuthGuard } from './guards/auth.guard';
 
-// Use your existing components
+// Import all components
 import { AdminComponent } from './components/admin/admin.component';
 import { ProfileComponent } from './components/profile/profile.component';
 import { UnauthorizedComponent } from './components/unauthorized/unauthorized.component';
@@ -16,53 +16,104 @@ import { MainComponent } from './pages/main/main.component';
 import { RegisterComponent } from './pages/register/register.component';
 
 const routes: Routes = [
+  // Public routes
   { path: '', redirectTo: '/main', pathMatch: 'full' },
   { path: 'main', component: MainComponent },
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
   { path: 'unauthorized', component: UnauthorizedComponent },
 
-  // Protected routes - use existing components as aliases
+  // Protected routes - require authentication
   {
     path: 'flowers',
     canActivate: [AuthGuard],
     children: [
-      { path: '', component: DetailPageComponent }, // Use DetailPageComponent as FlowerListComponent
-      { path: ':id', component: DetailPageComponent } // Use DetailPageComponent as FlowerDetailComponent
+      {
+        path: '',
+        component: MainComponent, // Show flower list on main page
+        data: { title: 'Flowers' }
+      },
+      {
+        path: ':id',
+        component: DetailPageComponent,
+        data: { title: 'Flower Details' }
+      }
     ]
   },
-  {
-    path: 'cart',
-    component: CheckoutComponent, // Use CheckoutComponent as CartComponent
-    canActivate: [AuthGuard]
-  },
-  {
-    path: 'profile',
-    component: ProfileComponent,
-    canActivate: [AuthGuard]
-  },
+
+  // Bouquet/Cart routes
   {
     path: 'customizing',
     component: CustomicingComponent,
-    canActivate: [AuthGuard]
+    canActivate: [AuthGuard],
+    data: { title: 'Customize Bouquet' }
+  },
+  {
+    path: 'cart',
+    component: CheckoutComponent,
+    canActivate: [AuthGuard],
+    data: { title: 'Shopping Cart' }
+  },
+  {
+    path: 'checkout',
+    component: CheckoutComponent,
+    canActivate: [AuthGuard],
+    data: { title: 'Checkout' }
   },
 
-  // Admin routes - use existing components
+  // User profile routes
+  {
+    path: 'profile',
+    component: ProfileComponent,
+    canActivate: [AuthGuard],
+    data: { title: 'My Profile' }
+  },
+
+  // Admin routes - require admin privileges
   {
     path: 'admin',
     canActivate: [AuthGuard, AdminGuard],
+    data: { title: 'Admin Panel' },
     children: [
-      { path: '', component: AdminComponent }, // Use AdminComponent as AdminPanelComponent
-      { path: 'flowers', component: AdminFlowersComponent }, // Use AdminFlowersComponent as FlowerManagementComponent
-      { path: 'users', component: AdminComponent } // Use AdminComponent as UserManagementComponent
+      {
+        path: '',
+        component: AdminComponent,
+        data: { title: 'Admin Dashboard' }
+      },
+      {
+        path: 'flowers',
+        component: AdminFlowersComponent,
+        data: { title: 'Flower Management' }
+      },
+      {
+        path: 'users',
+        component: AdminComponent,
+        data: { title: 'User Management' }
+      }
     ]
   },
 
+  // Fallback route - redirect to main
   { path: '**', redirectTo: '/main' }
 ];
 
 @NgModule({
-  imports: [RouterModule.forRoot(routes)],
+  imports: [RouterModule.forRoot(routes, {
+    // Enable router logging in development
+    enableTracing: false, // Set to true for debugging
+
+    // Scroll to top on route change
+    scrollPositionRestoration: 'top',
+
+    // Preload all lazy loaded modules
+    preloadingStrategy: undefined,
+
+    // Hash location strategy for better compatibility
+    useHash: false,
+
+    // Router configuration
+    onSameUrlNavigation: 'reload'
+  })],
   exports: [RouterModule]
 })
 export class AppRoutingModule { }

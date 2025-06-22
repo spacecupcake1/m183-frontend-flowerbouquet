@@ -7,7 +7,7 @@ export interface Flower {
   id?: number;
   name: string;
   meaning: string;
-  availablity: string; // Note: keeping original spelling from backend
+  availablity: string;
   info: string;
   color: string;
   price: number;
@@ -17,7 +17,7 @@ export interface Flower {
 export interface FlowerCreateRequest {
   name: string;
   meaning: string;
-  availability: string; // Note: correct spelling for DTO
+  availability: string;
   info: string;
   color: string;
   price: number;

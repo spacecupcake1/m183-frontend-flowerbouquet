@@ -1,58 +1,55 @@
-<!-- src/app/pages/main/main.component.html -->
-
 <div class="main-container">
-  <!-- Header Section -->
-  <div class="header-section">
-    <h1 class="page-title">Flower Bouquet Shop</h1>
-    <p class="page-subtitle" *ngIf="isAuthenticated()">
-      Welcome back, {{ getUserDisplayName() }}!
-    </p>
-    <p class="page-subtitle" *ngIf="!isAuthenticated()">
-      Please log in to start creating your bouquet.
-    </p>
-  </div>
-
-  <!-- Error Display -->
-  <div class="error-message" *ngIf="error" role="alert">
-    <i class="icon-alert"></i>
-    {{ error }}
-    <button class="close-btn" (click)="error = ''" aria-label="Close error">&times;</button>
-  </div>
-
-  <!-- Loading Indicator -->
-  <div class="loading-container" *ngIf="isLoading">
-    <div class="loading-spinner"></div>
+  <!-- Loading Spinner -->
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="spinner"></div>
     <p>Loading flowers...</p>
   </div>
 
+  <!-- Error Message -->
+  <div *ngIf="error" class="error-message">
+    <p>{{ error }}</p>
+    <button (click)="loadFlowers()" class="retry-btn">Retry</button>
+  </div>
+
   <!-- Main Content -->
-  <div class="content-wrapper" *ngIf="!isLoading">
+  <div *ngIf="!isLoading && !error" class="content-wrapper">
+
+    <!-- Header Section -->
+    <div class="header-section">
+      <h1>🌸 Beautiful Flower Collection</h1>
+      <p class="subtitle">Create your perfect bouquet from our fresh selection</p>
+
+      <!-- Admin Quick Access -->
+      <div *ngIf="isAdmin()" class="admin-quick-access">
+        <button (click)="goToFlowerManagement()" class="admin-btn">
+          ⚙️ Manage Flowers
+        </button>
+      </div>
+    </div>
 
     <!-- Filters Section -->
     <div class="filters-section">
-      <h2>Find Your Perfect Flowers</h2>
+      <div class="filters-container">
 
-      <div class="filters-grid">
         <!-- Search Filter -->
         <div class="filter-group">
-          <label for="search">Search Flowers</label>
+          <label for="search">🔍 Search</label>
           <input
             id="search"
             type="text"
-            placeholder="Search by name or meaning..."
             [(ngModel)]="searchTerm"
-            (input)="onSearchChange()"
-            class="filter-input"
-            maxlength="100">
+            (input)="applyFilters()"
+            placeholder="Search flowers or meanings..."
+            class="filter-input">
         </div>
 
         <!-- Color Filter -->
         <div class="filter-group">
-          <label for="color">Color</label>
+          <label for="color">🎨 Color</label>
           <select
             id="color"
             [(ngModel)]="selectedColor"
-            (change)="onFilterChange()"
+            (change)="applyFilters()"
             class="filter-select">
             <option value="">All Colors</option>
             <option *ngFor="let color of availableColors" [value]="color">
@@ -63,30 +60,28 @@
 
         <!-- Price Filter -->
         <div class="filter-group">
-          <label for="price">Max Price: {{ formatPrice(priceRange) }}</label>
+          <label for="price">💰 Max Price: {{ formatPrice(priceRange) }}</label>
           <input
             id="price"
             type="range"
+            [(ngModel)]="priceRange"
+            (input)="applyFilters()"
             [min]="0"
             [max]="maxPrice"
-            [(ngModel)]="priceRange"
-            (input)="onFilterChange()"
+            [step]="5"
             class="filter-range">
         </div>
 
         <!-- Availability Filter -->
         <div class="filter-group">
-          <label for="availability">Availability</label>
+          <label for="availability">✅ Availability</label>
           <select
             id="availability"
             [(ngModel)]="availabilityFilter"
-            (change)="onFilterChange()"
+            (change)="applyFilters()"
             class="filter-select">
             <option value="">All</option>
             <option value="available">Available</option>
-            <option value="AVAILABLE">Available (Upper)</option>
-            <option value="true">In Stock</option>
-            <option value="limited">Limited</option>
             <option value="unavailable">Unavailable</option>
           </select>
         </div>
@@ -105,7 +100,7 @@
 
     <!-- Bouquet Summary -->
     <div class="bouquet-summary" *ngIf="bouquet.length > 0">
-      <h3>Your Bouquet ({{ getBouquetItemCount() }} items)</h3>
+      <h3>🛒 Your Bouquet ({{ getBouquetItemCount() }} items)</h3>
       <div class="bouquet-items">
         <div class="bouquet-item" *ngFor="let item of bouquet; trackBy: trackByBouquetItem">
           <span class="item-name">{{ item.flower.name }}</span>
@@ -131,7 +126,7 @@
         <strong>Total: {{ formatPrice(getBouquetTotal()) }}</strong>
       </div>
 
-      <!-- Checkout Button - Fixed without directive -->
+      <!-- Checkout Button -->
       <button
         *ngIf="isAuthenticated()"
         (click)="proceedToCheckout()"
@@ -154,28 +149,20 @@
       <h2>Available Flowers ({{ filteredFlowers.length }})</h2>
 
       <div class="flowers-grid" *ngIf="filteredFlowers.length > 0">
-        <div class="flower-card" *ngFor="let flower of filteredFlowers; trackBy: trackByFlowerId">
+        <div class="flower-card"
+             *ngFor="let flower of filteredFlowers; trackBy: trackByFlowerId"
+             (click)="viewFlowerDetails(flower)"
+             [class.clickable]="flower.id">
+
           <div class="flower-image">
             <img
               [src]="flower.imageUrl || 'assets/images/default-flower.jpg'"
               [alt]="flower.name"
-              (error)="onImageError($event)">
-          </div>
+              (error)="onImageError($event)"
+              loading="lazy">
 
-          <div class="flower-info">
-            <h3 class="flower-name">{{ sanitizeText(flower.name) }}</h3>
-            <p class="flower-meaning" *ngIf="flower.meaning">
-              <em>{{ sanitizeText(flower.meaning) }}</em>
-            </p>
-            <p class="flower-details">
-              <span class="flower-color">{{ flower.color | titlecase }}</span>
-              <span class="flower-price">{{ formatPrice(flower.price) }}</span>
-            </p>
-            <p class="flower-info-text" *ngIf="flower.info">
-              {{ sanitizeText(flower.info) }}
-            </p>
-
-            <div class="flower-availability">
+            <!-- Availability Badge -->
+            <div class="availability-overlay">
               <span
                 class="availability-badge"
                 [ngClass]="{
@@ -188,40 +175,64 @@
             </div>
           </div>
 
-          <div class="flower-actions">
-            <!-- Debug info (remove in production) -->
-            <div class="debug-info" *ngIf="true" style="font-size: 0.8rem; color: #666; margin-bottom: 10px;">
-              <div>ID: {{ flower.id || 'No ID' }}</div>
-              <div>Auth: {{ isAuthenticated() ? 'Yes' : 'No' }}</div>
-              <div>Available: {{ isFlowerAvailable(flower) ? 'Yes' : 'No' }}</div>
-              <div>Availability: "{{ flower.availablity }}"</div>
+          <div class="flower-info">
+            <h3 class="flower-name">{{ sanitizeText(flower.name) }}</h3>
+            <p class="flower-meaning" *ngIf="flower.meaning">
+              <em>"{{ sanitizeText(flower.meaning) }}"</em>
+            </p>
+            <div class="flower-details">
+              <span class="flower-color">
+                <span class="color-dot" [style.background-color]="flower.color?.toLowerCase()"></span>
+                {{ flower.color | titlecase }}
+              </span>
+              <span class="flower-price">{{ formatPrice(flower.price) }}</span>
             </div>
+            <p class="flower-info-text" *ngIf="flower.info">
+              {{ sanitizeText(flower.info) }}
+            </p>
+          </div>
 
+          <div class="flower-actions" (click)="$event.stopPropagation()">
+            <!-- Quick Add to Bouquet Button -->
             <button
-              *ngIf="isAuthenticated() && flower.id && isFlowerAvailable(flower)"
+              *ngIf="isAuthenticated() && isFlowerAvailable(flower)"
               (click)="addToBouquet(flower)"
-              class="add-to-bouquet-btn"
+              class="quick-add-btn"
+              [disabled]="isLoading"
               type="button">
-              Add to Bouquet
+              🛒 Quick Add
             </button>
 
-            <p *ngIf="!isAuthenticated()" class="login-message">
-              Please log in to add flowers
-            </p>
+            <!-- Login Required Message -->
+            <div *ngIf="!isAuthenticated() && isFlowerAvailable(flower)" class="login-required">
+              <small>Login to add to bouquet</small>
+            </div>
 
-            <p *ngIf="isAuthenticated() && (!flower.id || !isFlowerAvailable(flower))"
-               class="unavailable-message">
-              Currently unavailable
-            </p>
+            <!-- Unavailable Message -->
+            <div *ngIf="!isFlowerAvailable(flower)" class="unavailable-msg">
+              <small>Currently unavailable</small>
+            </div>
+
+            <!-- View Details Button -->
+            <button
+              (click)="viewFlowerDetails(flower)"
+              class="view-details-btn"
+              type="button">
+              👁️ View Details
+            </button>
           </div>
         </div>
       </div>
 
-      <div class="no-flowers" *ngIf="filteredFlowers.length === 0">
-        <p>No flowers match your current filters.</p>
-        <button (click)="clearFilters()" class="clear-filters-btn">
-          Clear Filters
-        </button>
+      <!-- No Flowers Found -->
+      <div *ngIf="filteredFlowers.length === 0" class="no-flowers">
+        <div class="no-flowers-content">
+          <h3>🔍 No flowers found</h3>
+          <p>Try adjusting your filters to see more flowers.</p>
+          <button (click)="clearFilters()" class="clear-filters-btn">
+            Clear All Filters
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -231,27 +242,20 @@
 <div class="modal-overlay" *ngIf="showCheckoutModal" (click)="closeCheckoutModal()">
   <div class="modal-content" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h2>Checkout</h2>
-      <button class="close-btn" (click)="closeCheckoutModal()" aria-label="Close">&times;</button>
+      <h2>🛒 Checkout Summary</h2>
+      <button (click)="closeCheckoutModal()" class="close-btn">&times;</button>
     </div>
 
     <div class="modal-body">
-      <h3>Order Summary</h3>
       <div class="checkout-items">
-        <div class="checkout-item" *ngFor="let item of bouquet">
-          <span class="item-name">{{ item.flower.name }}</span>
-          <span class="item-quantity">{{ item.quantity }}x</span>
-          <span class="item-price">{{ formatPrice(item.flower.price * item.quantity) }}</span>
+        <div *ngFor="let item of bouquet" class="checkout-item">
+          <span>{{ item.flower.name }} x{{ item.quantity }}</span>
+          <span>{{ formatPrice(item.flower.price * item.quantity) }}</span>
         </div>
       </div>
-
       <div class="checkout-total">
-        <strong>Total: {{ formatPrice(getBouquetTotal()) }}</strong>
-      </div>
-
-      <div class="customer-info">
-        <p><strong>Customer:</strong> {{ getUserDisplayName() }}</p>
-        <p><strong>Items:</strong> {{ getBouquetItemCount() }} flowers</p>
+        <h3>Total: {{ formatPrice(getBouquetTotal()) }}</h3>
+        <p>{{ getBouquetItemCount() }} flowers</p>
       </div>
     </div>
 

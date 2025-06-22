@@ -1,123 +1,59 @@
-import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, throwError } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+import { environment } from 'src/environments/environment';
 import { User } from '../data/user';
 import { AuthService } from './auth.service';
 import { ValidationService } from './validation.service';
 
-export interface UserRegistrationData {
+interface UserRegistrationDTO {
   username: string;
+  email: string;
   firstname: string;
   lastname: string;
-  email: string;
   password: string;
 }
 
-export interface UserLoginData {
-  username: string;
-  password: string;
-}
-
-export interface UserData {
-  userId: number;
-  username: string;
-  firstname: string;
-  lastname: string;
-  email: string;
-  roles: string[];
-  isAdmin?: boolean;
-}
-
-export interface ProfileUpdateData {
-  firstname?: string;
-  lastname?: string;
-  email?: string;
-}
-
-export interface ApiError {
-  error: string;
-  message: string;
-  fieldErrors?: { [key: string]: string };
-}
-
-/**
- * Enhanced UserService with comprehensive security features and error handling.
- * Works in conjunction with AuthService for authentication management.
- */
 @Injectable({
   providedIn: 'root'
 })
 export class UserService {
-  private readonly baseUrl = 'http://localhost:8080/api/users';
-  private isLoadingSubject = new BehaviorSubject<boolean>(false);
-
-  public isLoading$ = this.isLoadingSubject.asObservable();
+  private readonly API_URL = `${environment.apiUrl}/users`;
 
   constructor(
     private http: HttpClient,
-    private validationService: ValidationService,
-    private authService: AuthService
+    private authService: AuthService,
+    private validationService: ValidationService
   ) {}
 
   /**
-   * HTTP options for requests with credentials (sessions).
+   * Register new user
    */
-  private getHttpOptions() {
-    return {
-      headers: new HttpHeaders({
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
-      }),
-      withCredentials: true
-    };
+  register(userData: UserRegistrationDTO): Observable<any> {
+    return this.http.post(`${this.API_URL}/register`, userData);
   }
 
   /**
-   * Convert backend UserData to frontend User model.
+   * Alternative method name for registration (for compatibility)
    */
-  private convertToUser(userData: UserData): User {
-    return {
-      id: userData.userId, // Map userId to id for consistency
-      username: userData.username,
-      firstname: userData.firstname,
-      lastname: userData.lastname,
-      email: userData.email,
-      roles: userData.roles || [],
-      isAdmin: userData.isAdmin || false
-    };
+  registerUser(userData: UserRegistrationDTO): Observable<any> {
+    return this.register(userData);
   }
 
   /**
-   * Set loading state.
-   */
-  private setLoading(loading: boolean): void {
-    this.isLoadingSubject.next(loading);
-  }
-
-  // ========== AUTHENTICATION DELEGATION METHODS ==========
-  // These delegate to AuthService for consistency
-
-  /**
-   * Get current user ID - Fixed to use .id instead of .userId
-   */
-  getCurrentUserId(): number | null {
-    const user = this.authService.getCurrentUserValue();
-    return user ? user.id : null; // Fixed: use .id not .userId
-  }
-
-  /**
-   * Get current user data from AuthService
+   * Get current user data (synchronous)
    */
   getCurrentUserData(): User | null {
     return this.authService.getCurrentUserValue();
   }
 
   /**
-   * Get current user observable from AuthService
+   * Get current user ID
    */
-  getCurrentUser(): Observable<User | null> {
-    return this.authService.currentUser;
+  getCurrentUserId(): number | null {
+    const user = this.getCurrentUserData();
+    return user?.id || user?.userId || null;
   }
 
   /**
@@ -128,392 +64,384 @@ export class UserService {
   }
 
   /**
-   * Check if current user is admin
+   * Check if user is admin
    */
   isAdmin(): boolean {
     return this.authService.isAdmin();
   }
 
   /**
-   * Check if current user has specific role
-   */
-  hasRole(roleName: string): boolean {
-    return this.authService.hasRole(roleName);
-  }
-
-  /**
-   * Check if current user has any of the specified roles
-   */
-  hasAnyRole(roleNames: string[]): boolean {
-    return this.authService.hasAnyRole(roleNames);
-  }
-
-  /**
-   * Clear user session (delegate to AuthService)
-   */
-  clearUserSession(): void {
-    this.authService.clearAuthState();
-  }
-
-  // ========== USER DISPLAY UTILITY METHODS ==========
-
-  /**
-   * Get user display name - Updated signature to handle null properly
-   */
-  getUserDisplayName(user?: User | null): string {
-    // Convert null to undefined and handle both cases
-    const targetUser = user ?? this.authService.getCurrentUserValue() ?? undefined;
-    if (!targetUser) return '';
-    return `${targetUser.firstname} ${targetUser.lastname}`.trim();
-  }
-
-  /**
-   * Get user initials - Updated signature to handle null properly
-   */
-  getUserInitials(user?: User | null): string {
-    // Convert null to undefined and handle both cases
-    const targetUser = user ?? this.authService.getCurrentUserValue() ?? undefined;
-    if (!targetUser) return '';
-    const first = targetUser.firstname ? targetUser.firstname.charAt(0).toUpperCase() : '';
-    const last = targetUser.lastname ? targetUser.lastname.charAt(0).toUpperCase() : '';
-    return `${first}${last}`;
-  }
-
-  // ========== PROFILE MANAGEMENT ==========
-
-  /**
-   * Update current user profile
-   */
-  updateCurrentUserProfile(updateData: ProfileUpdateData): Observable<User> {
-    // Sanitize input data
-    const sanitizedData = this.sanitizeUpdateData(updateData);
-
-    return this.http.put<any>(`${this.baseUrl}/profile`, sanitizedData, this.getHttpOptions())
-      .pipe(
-        map(response => {
-          // Convert response to User interface
-          const user: User = {
-            id: response.userId || response.id,
-            username: response.username,
-            firstname: response.firstname,
-            lastname: response.lastname,
-            email: response.email,
-            roles: response.roles || [],
-            isAdmin: response.isAdmin || false,
-            lastLogin: response.lastLogin
-          };
-
-          // Update AuthService with new user data
-          this.authService['setAuthState'](user); // Access private method if available
-
-          return user;
-        }),
-        catchError(this.handleError)
-      );
-  }
-
-  /**
-   * Get current user profile from server
-   */
-  getCurrentUserProfile(): Observable<User> {
-    return this.http.get<UserData>(`${this.baseUrl}/profile`, this.getHttpOptions())
-      .pipe(
-        map(userData => this.convertToUser(userData)),
-        catchError(this.handleError)
-      );
-  }
-
-  // ========== ADMIN USER MANAGEMENT ==========
-
-  /**
-   * Get all users (admin only) - FIXED ENDPOINT
-   */
-  getAllUsers(): Observable<User[]> {
-    return this.http.get<User[]>(`${this.baseUrl}`, this.getHttpOptions()) // Changed from /admin/users to just /api/users
-      .pipe(
-        map(users => users.map(user => ({
-          id: user.id,
-          username: user.username,
-          firstname: user.firstname,
-          lastname: user.lastname,
-          email: user.email,
-          roles: user.roles || [],
-          isAdmin: user.isAdmin || false
-        }))),
-        catchError(this.handleError)
-      );
-  }
-
-  /**
-   * Get user by ID (admin only) - FIXED ENDPOINT
-   */
-  getUserById(id: number): Observable<User> {
-    return this.http.get<User>(`${this.baseUrl}/${id}`, this.getHttpOptions()) // Changed from /admin/users/${id} to /api/users/${id}
-      .pipe(
-        map(user => ({
-          id: user.id,
-          username: user.username,
-          firstname: user.firstname,
-          lastname: user.lastname,
-          email: user.email,
-          roles: user.roles || [],
-          isAdmin: user.isAdmin || false
-        })),
-        catchError(this.handleError)
-      );
-  }
-
-  /**
-   * Update user (admin only) - FIXED ENDPOINT
-   */
-  updateUser(userId: number, userData: Partial<UserRegistrationData>): Observable<User> {
-    const sanitizedData = this.sanitizeUpdateData(userData);
-
-    return this.http.put<User>(`${this.baseUrl}/${userId}`, sanitizedData, this.getHttpOptions()) // Changed from /admin/users/${userId} to /api/users/${userId}
-      .pipe(
-        map(user => ({
-          id: user.id,
-          username: user.username,
-          firstname: user.firstname,
-          lastname: user.lastname,
-          email: user.email,
-          roles: user.roles || [],
-          isAdmin: user.isAdmin || false
-        })),
-        catchError(this.handleError)
-      );
-  }
-
-  /**
-   * Delete user (admin only) - FIXED ENDPOINT
-   */
-  deleteUser(userId: number): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/${userId}`, this.getHttpOptions()) // Changed from /admin/users/${userId} to /api/users/${userId}
-      .pipe(
-        catchError(this.handleError)
-      );
-  }
-
-  /**
-   * Register new user (admin only) - FIXED TO USE REGISTER ENDPOINT
-   */
-  registerUser(userData: UserRegistrationData): Observable<User> {
-    // Validate and sanitize data
-    const validationErrors = this.validateRegistrationData(userData);
-    if (Object.keys(validationErrors).length > 0) {
-      return throwError(() => ({
-        error: { fieldErrors: validationErrors }
-      }));
-    }
-
-    const sanitizedData = this.sanitizeRegistrationData(userData);
-
-    return this.http.post<any>(`${this.baseUrl}/register`, sanitizedData, this.getHttpOptions()) // Use the register endpoint
-      .pipe(
-        map(response => ({
-          id: response.userId || 0,
-          username: response.username || '',
-          firstname: response.firstname || '',
-          lastname: response.lastname || '',
-          email: response.email || '',
-          roles: response.roles || ['ROLE_USER'],
-          isAdmin: response.isAdmin || false
-        })),
-        catchError(this.handleError)
-      );
-  }
-
-  /**
-   * Add role to user (admin only)
-   */
-  addRoleToUser(userId: number, role: string): Observable<any> {
-    return this.http.post(`${this.baseUrl}/admin/users/${userId}/roles`, { role }, this.getHttpOptions())
-      .pipe(
-        catchError(this.handleError)
-      );
-  }
-
-  /**
-   * Remove role from user (admin only)
-   */
-  removeRoleFromUser(userId: number, role: string): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/admin/users/${userId}/roles/${role}`, this.getHttpOptions())
-      .pipe(
-        catchError(this.handleError)
-      );
-  }
-
-  /**
-   * Check if user is admin by ID (admin only)
-   */
-  isUserAdmin(id: number): Observable<{ isAdmin: boolean }> {
-    return this.http.get<{ isAdmin: boolean }>(`${this.baseUrl}/admin/users/${id}/is-admin`, this.getHttpOptions())
-      .pipe(
-        catchError(this.handleError)
-      );
-  }
-
-  // ========== LOGIN/LOGOUT (LEGACY - USE AUTHSERVICE INSTEAD) ==========
-
-  /**
-   * Login user - DEPRECATED: Use AuthService.login() instead
-   */
-  login(username: string, password: string): Observable<any> {
-    console.warn('UserService.login() is deprecated. Use AuthService.login() instead.');
-    return this.authService.login({ username, password });
-  }
-
-  /**
-   * Logout user - DEPRECATED: Use AuthService.logout() instead
+   * Logout user
    */
   logout(): Observable<any> {
-    console.warn('UserService.logout() is deprecated. Use AuthService.logout() instead.');
     return this.authService.logout();
   }
 
-  // ========== VALIDATION AND SANITIZATION ==========
-
   /**
-   * Validate registration data on client side.
+   * Update user profile
    */
-  private validateRegistrationData(userData: UserRegistrationData): { [key: string]: string } {
-    const errors: { [key: string]: string } = {};
-
-    // Username validation
-    if (!userData.username) {
-      errors['username'] = 'Username is required';
-    } else if (!this.validationService.isValidUsername(userData.username)) {
-      errors['username'] = 'Username must be 3-50 characters long and contain only letters, numbers, hyphens, and underscores';
-    }
-
-    // Firstname validation
-    if (!userData.firstname) {
-      errors['firstname'] = 'First name is required';
-    } else if (!this.validationService.isValidName(userData.firstname)) {
-      errors['firstname'] = 'First name must be 2-50 characters long and contain only letters, spaces, hyphens, and apostrophes';
-    }
-
-    // Lastname validation
-    if (!userData.lastname) {
-      errors['lastname'] = 'Last name is required';
-    } else if (!this.validationService.isValidName(userData.lastname)) {
-      errors['lastname'] = 'Last name must be 2-50 characters long and contain only letters, spaces, hyphens, and apostrophes';
-    }
-
-    // Email validation
-    if (!userData.email) {
-      errors['email'] = 'Email is required';
-    } else if (!this.validationService.isValidEmail(userData.email)) {
-      errors['email'] = 'Please enter a valid email address';
-    }
-
-    // Password validation
-    if (!userData.password) {
-      errors['password'] = 'Password is required';
-    } else if (userData.password.length < 8) {
-      errors['password'] = 'Password must be at least 8 characters long';
-    }
-
-    return errors;
+  updateProfile(userData: Partial<User>): Observable<User> {
+    return this.http.put<User>(`${this.API_URL}/profile`, userData, {
+      withCredentials: true
+    }).pipe(
+      tap(updatedUser => {
+        // Update user in auth service state
+        this.authService.updateUserInState(updatedUser);
+      })
+    );
   }
 
   /**
-   * Sanitize registration data.
+   * Alternative method name for profile update (for compatibility)
    */
-  private sanitizeRegistrationData(userData: UserRegistrationData): UserRegistrationData {
+  updateCurrentUserProfile(userData: Partial<User>): Observable<User> {
+    return this.updateProfile(userData);
+  }
+
+  /**
+   * Change user password
+   */
+  changePassword(currentPassword: string, newPassword: string): Observable<any> {
+    return this.http.post(`${this.API_URL}/change-password`, {
+      currentPassword,
+      newPassword
+    }, {
+      withCredentials: true
+    });
+  }
+
+  /**
+   * Admin: Get all users
+   */
+  getAllUsers(): Observable<User[]> {
+    return this.http.get<User[]>(`${this.API_URL}/admin/all`, {
+      withCredentials: true
+    });
+  }
+
+  /**
+   * Admin: Update user
+   */
+  updateUser(userId: number, userData: Partial<User>): Observable<User> {
+    return this.http.put<User>(`${this.API_URL}/admin/${userId}`, userData, {
+      withCredentials: true
+    });
+  }
+
+  /**
+   * Admin: Delete user
+   */
+  deleteUser(userId: number): Observable<any> {
+    return this.http.delete(`${this.API_URL}/admin/${userId}`, {
+      withCredentials: true
+    });
+  }
+
+  /**
+   * Admin: Add role to user
+   */
+  addRoleToUser(userId: number, role: string): Observable<any> {
+    return this.http.post(`${this.API_URL}/admin/${userId}/roles`, { role }, {
+      withCredentials: true
+    });
+  }
+
+  /**
+   * Admin: Remove role from user
+   */
+  removeRoleFromUser(userId: number, role: string): Observable<any> {
+    return this.http.delete(`${this.API_URL}/admin/${userId}/roles/${role}`, {
+      withCredentials: true
+    });
+  }
+
+  /**
+   * Check if user has specific role
+   */
+  hasRole(role: string): boolean {
+    return this.authService.hasRole(role);
+  }
+
+  /**
+   * Check if user has any of the specified roles
+   */
+  hasAnyRole(roles: string[]): boolean {
+    return this.authService.hasAnyRole(roles);
+  }
+
+  /**
+   * Login user (wrapper for AuthService login)
+   */
+  login(username: string, password: string): Observable<any> {
+    return this.authService.login(username, password);
+  }
+
+  /**
+   * Get user display name (with no parameters - uses current user)
+   */
+  getUserDisplayName(): string {
+    return this.authService.getUserDisplayName();
+  }
+
+  /**
+   * Get user initials (with optional user parameter)
+   */
+  getUserInitials(user?: User): string {
+    if (user) {
+      if (user.firstname && user.lastname) {
+        return `${user.firstname.charAt(0)}${user.lastname.charAt(0)}`.toUpperCase();
+      }
+      return user.username?.charAt(0).toUpperCase() || '?';
+    }
+    return this.authService.getUserInitials();
+  }
+
+  /**
+   * Validate user registration data
+   */
+  validateRegistrationData(userData: UserRegistrationDTO): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    // Validate username
+    if (!userData.username) {
+      errors.push('Username is required');
+    } else if (!this.validationService.validateUsername(userData.username)) {
+      errors.push('Username must be 3-50 characters and contain only letters, numbers, underscores, and hyphens');
+    }
+
+    // Validate firstname
+    if (!userData.firstname) {
+      errors.push('First name is required');
+    } else if (!this.validationService.validateName(userData.firstname)) {
+      errors.push('First name must be 2-50 characters and contain only letters, spaces, hyphens, and apostrophes');
+    }
+
+    // Validate lastname
+    if (!userData.lastname) {
+      errors.push('Last name is required');
+    } else if (!this.validationService.validateName(userData.lastname)) {
+      errors.push('Last name must be 2-50 characters and contain only letters, spaces, hyphens, and apostrophes');
+    }
+
+    // Validate email
+    if (!userData.email) {
+      errors.push('Email is required');
+    } else if (!this.validationService.validateEmail(userData.email)) {
+      errors.push('Please enter a valid email address');
+    }
+
+    // Validate password
+    const passwordValidation = this.validationService.validatePassword(userData.password);
+    if (!passwordValidation.valid) {
+      errors.push(...passwordValidation.errors);
+    }
+
     return {
-      username: this.validationService.sanitizeInput(userData.username).trim(),
-      firstname: this.validationService.sanitizeInput(userData.firstname).trim(),
-      lastname: this.validationService.sanitizeInput(userData.lastname).trim(),
-      email: this.validationService.sanitizeInput(userData.email).trim().toLowerCase(),
-      password: userData.password // Don't sanitize passwords
+      valid: errors.length === 0,
+      errors: errors
     };
   }
 
   /**
-   * Sanitize update data.
+   * Clean and sanitize user registration data
    */
-  private sanitizeUpdateData(userData: Partial<UserRegistrationData>): Partial<UserRegistrationData> {
-    const sanitized: Partial<UserRegistrationData> = {};
-
-    if (userData.username) {
-      sanitized.username = this.validationService.sanitizeInput(userData.username).trim();
-    }
-    if (userData.firstname) {
-      sanitized.firstname = this.validationService.sanitizeInput(userData.firstname).trim();
-    }
-    if (userData.lastname) {
-      sanitized.lastname = this.validationService.sanitizeInput(userData.lastname).trim();
-    }
-    if (userData.email) {
-      sanitized.email = this.validationService.sanitizeInput(userData.email).trim().toLowerCase();
-    }
-    if (userData.password) {
-      sanitized.password = userData.password; // Don't sanitize passwords
-    }
-
-    return sanitized;
-  }
-
-  // ========== LEGACY COMPATIBILITY ==========
-
-  /**
-   * Legacy method for backward compatibility
-   */
-  createUser(user: any): Observable<any> {
-    console.warn('createUser is deprecated, use registerUser instead');
-    return this.registerUser(user);
+  sanitizeRegistrationData(userData: UserRegistrationDTO): UserRegistrationDTO {
+    return {
+      username: this.validationService.sanitizeInput(userData.username),
+      firstname: this.validationService.sanitizeInput(userData.firstname),
+      lastname: this.validationService.sanitizeInput(userData.lastname),
+      email: this.validationService.sanitizeInput(userData.email),
+      password: userData.password // Don't sanitize password - just validate
+    };
   }
 
   /**
-   * Get current user from server - Legacy method
+   * Validate login data
    */
-  getCurrentUserFromServer(): Observable<User> {
-    return this.authService.getCurrentUser();
-  }
+  validateLoginData(username: string, password: string): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
 
-  /**
-   * Refresh current user data
-   */
-  refreshCurrentUser(): Observable<User> {
-    return this.authService.refreshUser();
-  }
-
-  // ========== ERROR HANDLING ==========
-
-  /**
-   * Handle HTTP errors.
-   */
-  private handleError = (error: HttpErrorResponse): Observable<never> => {
-    let errorMessage = 'An error occurred';
-
-    if (error.error instanceof ErrorEvent) {
-      // Client-side error
-      errorMessage = error.error.message;
-    } else {
-      // Server-side error
-      switch (error.status) {
-        case 400:
-          errorMessage = error.error?.message || 'Bad request';
-          break;
-        case 401:
-          errorMessage = 'Unauthorized access';
-          break;
-        case 403:
-          errorMessage = 'Access forbidden';
-          break;
-        case 404:
-          errorMessage = 'Resource not found';
-          break;
-        case 500:
-          errorMessage = 'Internal server error';
-          break;
-        default:
-          errorMessage = error.error?.message || `Error ${error.status}: ${error.statusText}`;
-      }
+    if (!username) {
+      errors.push('Username is required');
     }
 
-    console.error('UserService Error:', error);
-    return throwError(() => new Error(errorMessage));
-  };
+    if (!password) {
+      errors.push('Password is required');
+    }
+
+    // Basic validation for login (less strict than registration)
+    if (username && username.length < 3) {
+      errors.push('Username is too short');
+    }
+
+    if (password && password.length < 8) {
+      errors.push('Password is too short');
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors: errors
+    };
+  }
+
+  /**
+   * Check if current user can perform admin actions
+   */
+  canPerformAdminActions(): boolean {
+    return this.isAdmin() && this.isLoggedIn();
+  }
+
+  /**
+   * Get user preferences
+   */
+  getUserPreferences(): Observable<any> {
+    return this.http.get(`${this.API_URL}/preferences`, {
+      withCredentials: true
+    });
+  }
+
+  /**
+   * Update user preferences
+   */
+  updateUserPreferences(preferences: any): Observable<any> {
+    return this.http.put(`${this.API_URL}/preferences`, preferences, {
+      withCredentials: true
+    });
+  }
+
+  /**
+   * Request password reset
+   */
+  requestPasswordReset(email: string): Observable<any> {
+    return this.http.post(`${this.API_URL}/password-reset-request`, { email });
+  }
+
+  /**
+   * Reset password with token
+   */
+  resetPassword(token: string, newPassword: string): Observable<any> {
+    return this.http.post(`${this.API_URL}/password-reset`, {
+      token,
+      newPassword
+    });
+  }
+
+  /**
+   * Verify email with token
+   */
+  verifyEmail(token: string): Observable<any> {
+    return this.http.post(`${this.API_URL}/verify-email`, { token });
+  }
+
+  /**
+   * Resend email verification
+   */
+  resendEmailVerification(): Observable<any> {
+    return this.http.post(`${this.API_URL}/resend-verification`, {}, {
+      withCredentials: true
+    });
+  }
+
+  /**
+   * Get user activity log (admin only)
+   */
+  getUserActivityLog(userId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.API_URL}/admin/${userId}/activity`, {
+      withCredentials: true
+    });
+  }
+
+  /**
+   * Admin: Lock/unlock user account
+   */
+  toggleUserLock(userId: number, locked: boolean): Observable<any> {
+    return this.http.post(`${this.API_URL}/admin/${userId}/lock`, { locked }, {
+      withCredentials: true
+    });
+  }
+
+  /**
+   * Admin: Enable/disable user account
+   */
+  toggleUserEnabled(userId: number, enabled: boolean): Observable<any> {
+    return this.http.post(`${this.API_URL}/admin/${userId}/enable`, { enabled }, {
+      withCredentials: true
+    });
+  }
+
+  /**
+   * Admin: Reset user password
+   */
+  adminResetPassword(userId: number, newPassword: string): Observable<any> {
+    return this.http.post(`${this.API_URL}/admin/${userId}/reset-password`, {
+      newPassword
+    }, {
+      withCredentials: true
+    });
+  }
+
+  /**
+   * Get user statistics (admin only)
+   */
+  getUserStatistics(): Observable<any> {
+    return this.http.get(`${this.API_URL}/admin/statistics`, {
+      withCredentials: true
+    });
+  }
+
+  /**
+   * Get user role display
+   */
+  getUserRoleDisplay(user?: User): string {
+    const targetUser = user || this.getCurrentUserData();
+    if (!targetUser) return '';
+
+    if (targetUser.isAdmin) {
+      return 'Administrator';
+    }
+
+    if (targetUser.roles && targetUser.roles.length > 0) {
+      return targetUser.roles.map(role =>
+        role.replace('ROLE_', '').toLowerCase()
+      ).join(', ');
+    }
+
+    return 'User';
+  }
+
+  /**
+   * Check if user is verified
+   */
+  isUserVerified(user?: User): boolean {
+    const targetUser = user || this.getCurrentUserData();
+    return targetUser?.emailVerified || false;
+  }
+
+  /**
+   * Get available roles (admin only)
+   */
+  getAvailableRoles(): Observable<string[]> {
+    return this.http.get<string[]>(`${this.API_URL}/admin/roles`, {
+      withCredentials: true
+    });
+  }
+
+  /**
+   * Admin: Get user by ID
+   */
+  getUserById(userId: number): Observable<User> {
+    return this.http.get<User>(`${this.API_URL}/admin/${userId}`, {
+      withCredentials: true
+    });
+  }
+
+  /**
+   * Admin: Search users
+   */
+  searchUsers(query: string): Observable<User[]> {
+    return this.http.get<User[]>(`${this.API_URL}/admin/search`, {
+      params: { query },
+      withCredentials: true
+    });
+  }
 }

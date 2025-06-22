@@ -1,13 +1,12 @@
 import { Injectable } from '@angular/core';
-import { ActivatedRouteSnapshot, CanActivate, CanActivateChild, Router, RouterStateSnapshot } from '@angular/router';
-import { Observable, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { ActivatedRouteSnapshot, CanActivate, Router, RouterStateSnapshot } from '@angular/router';
+import { Observable } from 'rxjs';
 import { AuthService } from '../service/auth.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class AdminGuard implements CanActivate, CanActivateChild {
+export class AdminGuard implements CanActivate {
 
   constructor(
     private authService: AuthService,
@@ -17,38 +16,14 @@ export class AdminGuard implements CanActivate, CanActivateChild {
   canActivate(
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
-  ): Observable<boolean> {
-    return this.checkAdminAccess(state.url);
-  }
+  ): Observable<boolean> | Promise<boolean> | boolean {
 
-  canActivateChild(
-    childRoute: ActivatedRouteSnapshot,
-    state: RouterStateSnapshot
-  ): Observable<boolean> {
-    return this.canActivate(childRoute, state);
-  }
-
-  private checkAdminAccess(url: string): Observable<boolean> {
-    if (!this.authService.isAuthenticated()) {
-      this.router.navigate(['/login'], { queryParams: { returnUrl: url } });
-      return of(false);
+    if (this.authService.isAdmin()) {
+      return true;
     }
 
-    // Check if user has admin role
-    return this.authService.getCurrentUser().pipe(
-      map((user) => {
-        if (user && this.authService.hasRole('ROLE_ADMIN')) {
-          return true;
-        } else {
-          // Redirect to unauthorized page or main page
-          this.router.navigate(['/unauthorized']);
-          return false;
-        }
-      }),
-      catchError(() => {
-        this.router.navigate(['/login'], { queryParams: { returnUrl: url } });
-        return of(false);
-      })
-    );
+    // Redirect to unauthorized page
+    this.router.navigate(['/unauthorized']);
+    return false;
   }
 }

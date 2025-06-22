@@ -1,13 +1,12 @@
 import { Injectable } from '@angular/core';
-import { ActivatedRouteSnapshot, CanActivate, CanActivateChild, Router, RouterStateSnapshot } from '@angular/router';
-import { Observable, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { ActivatedRouteSnapshot, CanActivate, Router, RouterStateSnapshot } from '@angular/router';
+import { Observable } from 'rxjs';
 import { AuthService } from '../service/auth.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class AuthGuard implements CanActivate, CanActivateChild {
+export class AuthGuard implements CanActivate {
 
   constructor(
     private authService: AuthService,
@@ -17,38 +16,17 @@ export class AuthGuard implements CanActivate, CanActivateChild {
   canActivate(
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
-  ): Observable<boolean> {
-    return this.checkAuthentication(state.url);
-  }
+  ): Observable<boolean> | Promise<boolean> | boolean {
 
-  canActivateChild(
-    childRoute: ActivatedRouteSnapshot,
-    state: RouterStateSnapshot
-  ): Observable<boolean> {
-    return this.canActivate(childRoute, state);
-  }
-
-  private checkAuthentication(url: string): Observable<boolean> {
     if (this.authService.isAuthenticated()) {
-      return of(true);
+      return true;
     }
 
-    // Validate session with server
-    return this.authService.validateSession().pipe(
-      map((isValid) => {
-        if (isValid) {
-          return true;
-        } else {
-          this.authService.clearAuthState();
-          this.router.navigate(['/login'], { queryParams: { returnUrl: url } });
-          return false;
-        }
-      }),
-      catchError(() => {
-        this.authService.clearAuthState();
-        this.router.navigate(['/login'], { queryParams: { returnUrl: url } });
-        return of(false);
-      })
-    );
+    // Store the attempted URL for redirecting after login
+    this.router.navigate(['/login'], {
+      queryParams: { returnUrl: state.url }
+    });
+
+    return false;
   }
 }

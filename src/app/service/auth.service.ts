@@ -1,197 +1,153 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
-import { User } from '../data/user'; // Import the consistent User interface
+import { User } from '../data/user';
 
-export interface LoginRequest {
+interface LoginRequest {
   username: string;
   password: string;
 }
 
-export interface RegisterRequest {
-  username: string;
-  firstname: string;
-  lastname: string;
-  email: string;
-  password: string;
-}
-
-export interface AuthResponse {
+interface LoginResponse {
   message: string;
-  sessionId: string;
-  userId: number;
-  username: string;
-  firstname: string;
-  lastname: string;
-  email: string;
-  roles: string[];
-  isAdmin: boolean;
+  user: User;
+  sessionId?: string;
+}
+
+interface LogoutResponse {
+  message: string;
+  username?: string;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly baseUrl = 'http://localhost:8080/api/users';
+  private readonly API_URL = '/api/users';
 
-  // BehaviorSubject to track current user state
-  private currentUserSubject: BehaviorSubject<User | null>;
-  public currentUser: Observable<User | null>;
+  // BehaviorSubjects for reactive authentication state
+  private currentUserSubject = new BehaviorSubject<User | null>(null);
+  private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
 
-  // Track authentication state
-  private isAuthenticatedSubject: BehaviorSubject<boolean>;
-  public isAuthenticated$: Observable<boolean>;
+  // Public observables
+  public currentUser = this.currentUserSubject.asObservable();
+  public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
 
   constructor(
     private http: HttpClient,
     private router: Router
   ) {
-    // Initialize with user from session storage if available
-    const storedUser = this.getStoredUser();
-    this.currentUserSubject = new BehaviorSubject<User | null>(storedUser);
-    this.currentUser = this.currentUserSubject.asObservable();
-
-    // Initialize authentication state
-    this.isAuthenticatedSubject = new BehaviorSubject<boolean>(!!storedUser);
-    this.isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
-
-    // Validate session on service initialization
-    if (storedUser) {
-      this.validateSession().subscribe({
-        next: (isValid) => {
-          if (!isValid) {
-            this.clearAuthState();
-          }
-        },
-        error: () => {
-          this.clearAuthState();
-        }
-      });
-    }
+    // Initialize authentication state on service creation
+    this.initializeAuthState();
   }
 
   /**
-   * Login user with credentials
+   * Initialize authentication state from session
    */
-  login(credentials: LoginRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.baseUrl}/login`, credentials, {
+  private initializeAuthState(): void {
+    // Use a simple HTTP call without going through interceptors to avoid circular dependency
+    this.http.get<User>(`${this.API_URL}/current`, {
+      withCredentials: true
+    }).subscribe({
+      next: (user) => {
+        if (user) {
+          this.setAuthState(user);
+          console.log('Existing session found:', user.username);
+        }
+      },
+      error: () => {
+        this.clearAuthState();
+        console.log('No existing session found');
+      }
+    });
+  }
+
+  /**
+   * User login - overloaded to support both parameter styles
+   */
+  login(username: string, password: string): Observable<LoginResponse>;
+  login(credentials: { username: string; password: string }): Observable<LoginResponse>;
+  login(usernameOrCredentials: string | { username: string; password: string }, password?: string): Observable<LoginResponse> {
+    let loginData: LoginRequest;
+
+    if (typeof usernameOrCredentials === 'string') {
+      // Called with separate parameters
+      loginData = {
+        username: usernameOrCredentials.trim(),
+        password: password!
+      };
+    } else {
+      // Called with credentials object
+      loginData = {
+        username: usernameOrCredentials.username.trim(),
+        password: usernameOrCredentials.password
+      };
+    }
+
+    return this.http.post<LoginResponse>(`${this.API_URL}/login`, loginData, {
       withCredentials: true // Important for session-based auth
     }).pipe(
       tap(response => {
-        // Convert AuthResponse to User interface (data/user.ts)
-        const user: User = {
-          id: response.userId, // Map userId to id
-          username: response.username,
-          firstname: response.firstname,
-          lastname: response.lastname,
-          email: response.email || '', // Fallback to empty string if not provided
-          roles: response.roles,
-          isAdmin: response.isAdmin
-        };
-
-        this.setAuthState(user);
+        // Update authentication state
+        this.setAuthState(response.user);
+        console.log('Login successful:', response.message);
       }),
       catchError(this.handleError)
     );
   }
 
   /**
-   * Register new user
+   * User logout
    */
-  register(userData: RegisterRequest): Observable<any> {
-    return this.http.post(`${this.baseUrl}/register`, userData, {
+  logout(): Observable<LogoutResponse> {
+    return this.http.post<LogoutResponse>(`${this.API_URL}/logout`, {}, {
       withCredentials: true
     }).pipe(
-      catchError(this.handleError)
-    );
-  }
-
-  /**
-   * Logout user
-   */
-  logout(): Observable<any> {
-    return this.http.post(`${this.baseUrl}/logout`, {}, {
-      withCredentials: true
-    }).pipe(
-      tap(() => {
+      tap(response => {
+        // Clear authentication state
         this.clearAuthState();
-      }),
-      catchError((error) => {
-        // Even if logout fails on server, clear local state
-        this.clearAuthState();
-        return of({ message: 'Logged out locally' });
-      })
-    );
-  }
-
-  /**
-   * Get current user information from server
-   */
-  getCurrentUser(): Observable<User> {
-    return this.http.get<any>(`${this.baseUrl}/current`, {
-      withCredentials: true
-    }).pipe(
-      map(response => {
-        // Convert server response to User interface (data/user.ts)
-        const user: User = {
-          id: response.userId || response.id, // Handle both possible field names
-          username: response.username,
-          firstname: response.firstname,
-          lastname: response.lastname,
-          email: response.email || '',
-          roles: response.roles || [],
-          isAdmin: response.isAdmin || false,
-          lastLogin: response.lastLogin
-        };
-        return user;
-      }),
-      tap(user => {
-        // Update stored user with fresh data from server
-        this.setAuthState(user);
+        console.log('Logout successful:', response.message);
       }),
       catchError(error => {
-        if (error.status === 401) {
-          this.clearAuthState();
-        }
-        return throwError(() => error);
+        // Even if logout request fails, clear local state
+        this.clearAuthState();
+        return throwError(error);
       })
     );
   }
 
   /**
-   * Validate current session with server
+   * Get current user from server
    */
-  validateSession(): Observable<boolean> {
-    if (!this.isAuthenticated()) {
-      return of(false);
-    }
-
-    return this.getCurrentUser().pipe(
-      map(() => true),
-      catchError(() => of(false))
+  getCurrentUser(): Observable<User> {
+    return this.http.get<User>(`${this.API_URL}/current`, {
+      withCredentials: true
+    }).pipe(
+      catchError(this.handleError)
     );
   }
 
   /**
-   * Check if user is currently authenticated
+   * Check if user is authenticated (synchronous)
    */
   isAuthenticated(): boolean {
-    return this.isAuthenticatedSubject.value && !!this.currentUserSubject.value;
+    return this.isAuthenticatedSubject.value;
   }
 
   /**
-   * Get current user synchronously (for guards and services)
+   * Check if current user is admin (synchronous)
+   */
+  isAdmin(): boolean {
+    const user = this.currentUserSubject.value;
+    return user?.isAdmin || false;
+  }
+
+  /**
+   * Get current user value (synchronous)
    */
   getCurrentUserValue(): User | null {
-    return this.currentUserSubject.value;
-  }
-
-  /**
-   * Get current user synchronously with proper typing
-   */
-  getCurrentUserSync(): User | null {
     return this.currentUserSubject.value;
   }
 
@@ -199,7 +155,7 @@ export class AuthService {
    * Check if user has specific role
    */
   hasRole(role: string): boolean {
-    const user = this.getCurrentUserValue();
+    const user = this.currentUserSubject.value;
     return user?.roles?.includes(role) || false;
   }
 
@@ -207,228 +163,258 @@ export class AuthService {
    * Check if user has any of the specified roles
    */
   hasAnyRole(roles: string[]): boolean {
-    const user = this.getCurrentUserValue();
+    const user = this.currentUserSubject.value;
     if (!user?.roles) return false;
 
     return roles.some(role => user.roles.includes(role));
   }
 
   /**
-   * Check if user has all specified roles
-   */
-  hasAllRoles(roles: string[]): boolean {
-    const user = this.getCurrentUserValue();
-    if (!user?.roles) return false;
-
-    return roles.every(role => user.roles.includes(role));
-  }
-
-  /**
-   * Check if current user is admin
-   */
-  isAdmin(): boolean {
-    return this.hasRole('ROLE_ADMIN');
-  }
-
-  /**
-   * Get user's display name
+   * Get user display name
    */
   getUserDisplayName(): string {
-    const user = this.getCurrentUserValue();
-    if (user) {
-      return `${user.firstname} ${user.lastname}`.trim();
+    const user = this.currentUserSubject.value;
+    if (!user) return '';
+
+    if (user.firstname && user.lastname) {
+      return `${user.firstname} ${user.lastname}`;
     }
-    return '';
+
+    return user.username || 'User';
   }
 
   /**
-   * Get user's username
+   * Get user initials for avatar
    */
-  getUsername(): string {
-    const user = this.getCurrentUserValue();
-    return user?.username || '';
+  getUserInitials(): string {
+    const user = this.currentUserSubject.value;
+    if (!user) return '?';
+
+    if (user.firstname && user.lastname) {
+      return `${user.firstname.charAt(0)}${user.lastname.charAt(0)}`.toUpperCase();
+    }
+
+    return user.username?.charAt(0).toUpperCase() || '?';
   }
 
   /**
-   * Get user's ID
+   * Get user role display
    */
-  getUserId(): number | null {
-    const user = this.getCurrentUserValue();
-    return user?.id || null;
+  getUserRoleDisplay(): string {
+    const user = this.currentUserSubject.value;
+    if (!user) return '';
+
+    if (this.isAdmin()) {
+      return 'Administrator';
+    }
+
+    if (user.roles && user.roles.length > 0) {
+      return user.roles.map(role =>
+        role.replace('ROLE_', '').toLowerCase()
+      ).join(', ');
+    }
+
+    return 'User';
   }
 
   /**
-   * Set authentication state
+   * Check if user account is verified
    */
-  private setAuthState(user: User): void {
-    // Store user in session storage for persistence across browser tabs
-    this.storeUser(user);
+  isUserVerified(): boolean {
+    const user = this.currentUserSubject.value;
+    return user?.emailVerified || false;
+  }
 
-    // Update subjects
+  /**
+   * Set authentication state (called after successful login or user refresh)
+   */
+  setAuthState(user: User): void {
     this.currentUserSubject.next(user);
     this.isAuthenticatedSubject.next(true);
   }
 
   /**
-   * Clear authentication state
+   * Clear authentication state (called on logout or auth failure)
    */
   clearAuthState(): void {
-    // Clear stored user data
-    this.clearStoredUser();
-
-    // Update subjects
     this.currentUserSubject.next(null);
     this.isAuthenticatedSubject.next(false);
   }
 
   /**
-   * Store user in session storage
+   * Refresh user data from server
    */
-  private storeUser(user: User): void {
-    try {
-      sessionStorage.setItem('currentUser', JSON.stringify(user));
-    } catch (error) {
-      console.warn('Failed to store user in session storage:', error);
+  refreshUser(): Observable<User> {
+    return this.getCurrentUser().pipe(
+      tap(user => {
+        this.setAuthState(user);
+      }),
+      catchError(error => {
+        this.clearAuthState();
+        return throwError(error);
+      })
+    );
+  }
+
+  /**
+   * Update user data in state (after profile update)
+   */
+  updateUserInState(updatedUser: User): void {
+    this.currentUserSubject.next(updatedUser);
+  }
+
+  /**
+   * Check if session is valid
+   */
+  checkSession(): Observable<boolean> {
+    return this.getCurrentUser().pipe(
+      map(user => {
+        if (user) {
+          this.setAuthState(user);
+          return true;
+        } else {
+          this.clearAuthState();
+          return false;
+        }
+      }),
+      catchError(() => {
+        this.clearAuthState();
+        return [false];
+      })
+    );
+  }
+
+  /**
+   * Force logout (clear state and optionally redirect)
+   */
+  forceLogout(redirectToLogin: boolean = true): void {
+    this.clearAuthState();
+
+    if (redirectToLogin) {
+      this.router.navigate(['/login'], {
+        queryParams: { message: 'Session expired. Please log in again.' }
+      });
     }
   }
 
   /**
-   * Get stored user from session storage
+   * Handle authentication errors
    */
-  private getStoredUser(): User | null {
-    try {
-      const storedUser = sessionStorage.getItem('currentUser');
-      return storedUser ? JSON.parse(storedUser) : null;
-    } catch (error) {
-      console.warn('Failed to parse stored user:', error);
-      this.clearStoredUser();
-      return null;
+  handleAuthError(error: any): void {
+    console.error('Authentication error:', error);
+
+    if (error.status === 401 || error.status === 403) {
+      this.forceLogout();
     }
   }
 
   /**
-   * Clear stored user data
+   * Get authentication headers for manual requests
    */
-  private clearStoredUser(): void {
-    try {
-      sessionStorage.removeItem('currentUser');
-      // Also clear any legacy localStorage data
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('token'); // In case of previous token-based implementation
-    } catch (error) {
-      console.warn('Failed to clear stored user data:', error);
-    }
+  getAuthHeaders(): { [header: string]: string } {
+    // For session-based auth, credentials are handled by cookies
+    // This method exists for compatibility but returns empty headers
+    return {};
   }
 
   /**
-   * Handle HTTP errors
+   * Check if user can access admin features
    */
-  private handleError = (error: HttpErrorResponse): Observable<never> => {
+  canAccessAdmin(): boolean {
+    return this.isAdmin() && this.isAuthenticated();
+  }
+
+  /**
+   * Check if user can access specific feature
+   */
+  canAccess(requiredRoles: string[]): boolean {
+    if (!this.isAuthenticated()) {
+      return false;
+    }
+
+    if (requiredRoles.length === 0) {
+      return true; // No specific roles required, just authentication
+    }
+
+    return this.hasAnyRole(requiredRoles);
+  }
+
+  /**
+   * Get user permissions/capabilities
+   */
+  getUserCapabilities(): string[] {
+    const user = this.currentUserSubject.value;
+    if (!user) return [];
+
+    const capabilities: string[] = ['read'];
+
+    if (user.roles?.includes('ROLE_USER')) {
+      capabilities.push('create_bouquet', 'purchase');
+    }
+
+    if (user.roles?.includes('ROLE_ADMIN')) {
+      capabilities.push('admin', 'manage_flowers', 'manage_users', 'view_analytics');
+    }
+
+    if (user.roles?.includes('ROLE_MODERATOR')) {
+      capabilities.push('moderate_content', 'manage_orders');
+    }
+
+    return capabilities;
+  }
+
+  /**
+   * Check if user has specific capability
+   */
+  hasCapability(capability: string): boolean {
+    return this.getUserCapabilities().includes(capability);
+  }
+
+  /**
+   * Handle HTTP errors - simplified to avoid circular dependencies
+   */
+  private handleError = (error: HttpErrorResponse) => {
     let errorMessage = 'An error occurred';
 
     if (error.error instanceof ErrorEvent) {
       // Client-side error
-      errorMessage = error.error.message;
+      errorMessage = `Error: ${error.error.message}`;
     } else {
       // Server-side error
       switch (error.status) {
         case 401:
-          errorMessage = error.error?.error || 'Invalid credentials';
+          errorMessage = 'Invalid credentials or session expired';
+          // Don't call handleAuthError here to avoid potential circular calls
+          this.clearAuthState();
           break;
         case 403:
           errorMessage = 'Access denied';
           break;
         case 429:
-          errorMessage = error.error?.message || 'Too many requests. Please try again later.';
-          break;
-        case 400:
-          if (error.error?.details) {
-            // Validation errors
-            const details = error.error.details;
-            errorMessage = Object.values(details).join(', ');
-          } else {
-            errorMessage = error.error?.error || 'Invalid request';
-          }
+          errorMessage = 'Too many attempts. Please try again later';
           break;
         case 500:
-          errorMessage = 'Server error. Please try again later.';
-          break;
-        case 0:
-          errorMessage = 'Unable to connect to server. Please check your connection.';
+          errorMessage = 'Server error. Please try again later';
           break;
         default:
-          errorMessage = error.error?.message || `Error ${error.status}: ${error.statusText}`;
+          errorMessage = error.error?.message || `Error: ${error.status}`;
       }
     }
 
-    console.error('Auth Service Error:', error);
-    return throwError(() => ({
-      ...error,
-      userMessage: errorMessage
-    }));
-  };
-
-  /**
-   * Auto-refresh session periodically (call this in app component)
-   */
-  startSessionRefresh(intervalMinutes: number = 25): void {
-    if (typeof window !== 'undefined') {
-      const interval = setInterval(() => {
-        if (this.isAuthenticated()) {
-          this.validateSession().subscribe({
-            next: (isValid) => {
-              if (!isValid) {
-                clearInterval(interval);
-                this.clearAuthState();
-                this.router.navigate(['/login'], {
-                  queryParams: { message: 'Session expired. Please log in again.' }
-                });
-              }
-            },
-            error: () => {
-              clearInterval(interval);
-              this.clearAuthState();
-            }
-          });
-        } else {
-          clearInterval(interval);
-        }
-      }, intervalMinutes * 60 * 1000);
-    }
+    console.error('Auth Service Error:', errorMessage);
+    return throwError(errorMessage);
   }
 
   /**
-   * Force refresh current user data
+   * Debug method for development
    */
-  refreshUser(): Observable<User> {
-    return this.getCurrentUser();
-  }
-
-  /**
-   * Check if user has permission for specific action (integrates with PermissionService)
-   */
-  hasPermission(permission: string): boolean {
-    // This method can be enhanced based on your permission system
-    const user = this.getCurrentUserValue();
-    if (!user) return false;
-
-    // Basic role-based permissions
-    if (user.roles.includes('ROLE_ADMIN')) {
-      return true; // Admins have all permissions
-    }
-
-    // Add more specific permission logic here
-    switch (permission) {
-      case 'view_flowers':
-      case 'add_to_cart':
-        return user.roles.includes('ROLE_USER');
-      case 'manage_flowers':
-      case 'create_flower':
-      case 'edit_flower':
-      case 'delete_flower':
-        return user.roles.includes('ROLE_ADMIN');
-      default:
-        return false;
-    }
+  debugAuthState(): void {
+    console.log('=== Auth Service Debug ===');
+    console.log('Current User:', this.currentUserSubject.value);
+    console.log('Is Authenticated:', this.isAuthenticatedSubject.value);
+    console.log('Is Admin:', this.isAdmin());
+    console.log('User Display Name:', this.getUserDisplayName());
+    console.log('User Capabilities:', this.getUserCapabilities());
+    console.log('==========================');
   }
 }

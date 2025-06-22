@@ -477,7 +477,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
     const updateData: ProfileUpdateData = this.profileForm.value;
 
-    const updateSub = this.userService.updateCurrentUserProfile(updateData).subscribe({
+    const updateSub = this.userService.updateProfile(updateData).subscribe({
       next: (updatedUser) => {
         this.profileSuccess = 'Profile updated successfully!';
         this.currentUser = updatedUser;
@@ -612,7 +612,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
    * User info helpers.
    */
   getUserDisplayName(): string {
-    return this.userService.getUserDisplayName(this.currentUser || undefined);
+    return this.userService.getUserDisplayName();
   }
 
   getUserInitials(): string {

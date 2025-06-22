@@ -105,8 +105,8 @@ export class LoginComponent implements OnInit {
     for (const [key, value] of Object.entries(formData)) {
       if (typeof value === 'string') {
         const validation = this.validationService.validateAndSanitize(value);
-        if (!validation.isValid) {
-          this.validationErrors[key] = validation.error || 'Invalid input detected';
+        if (!validation.valid) {
+          this.validationErrors[key] = validation.errors[0] || 'Invalid input detected';
           this.errorMessage = 'Security validation failed';
           return false;
         }
