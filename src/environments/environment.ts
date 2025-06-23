@@ -1,6 +1,6 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:8080/api',
+  apiUrl: '/api',
   enableSecurityLogging: false,
   maxRequestRetries: 5,
   requestTimeoutMs: 60000,

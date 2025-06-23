@@ -2,7 +2,8 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, throwError } from 'rxjs';
-import { catchError, map, tap } from 'rxjs/operators';
+import { catchError, tap } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 import { User } from '../data/user';
 
 interface LoginRequest {
@@ -12,7 +13,13 @@ interface LoginRequest {
 
 interface LoginResponse {
   message: string;
-  user: User;
+  userId: number;
+  username: string;
+  firstname: string;
+  lastname: string;
+  email: string;
+  roles: string[];
+  isAdmin: boolean;
   sessionId?: string;
 }
 
@@ -25,7 +32,8 @@ interface LogoutResponse {
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly API_URL = '/api/users';
+  // Updated to use environment configuration for consistency
+  private readonly API_URL = `${environment.apiUrl}/users`;
 
   // BehaviorSubjects for reactive authentication state
   private currentUserSubject = new BehaviorSubject<User | null>(null);
@@ -47,7 +55,6 @@ export class AuthService {
    * Initialize authentication state from session
    */
   private initializeAuthState(): void {
-    // Use a simple HTTP call without going through interceptors to avoid circular dependency
     this.http.get<User>(`${this.API_URL}/current`, {
       withCredentials: true
     }).subscribe({
@@ -86,15 +93,29 @@ export class AuthService {
       };
     }
 
+    console.log('Making login request to:', `${this.API_URL}/login`);
+
     return this.http.post<LoginResponse>(`${this.API_URL}/login`, loginData, {
       withCredentials: true // Important for session-based auth
     }).pipe(
       tap(response => {
+        // Convert LoginResponse to User object
+        const user: User = {
+          id: response.userId,
+          userId: response.userId,
+          username: response.username,
+          email: response.email,
+          firstname: response.firstname,
+          lastname: response.lastname,
+          roles: response.roles,
+          isAdmin: response.isAdmin
+        };
+
         // Update authentication state
-        this.setAuthState(response.user);
+        this.setAuthState(user);
         console.log('Login successful:', response.message);
       }),
-      catchError(this.handleError)
+      catchError(this.handleError.bind(this))
     );
   }
 
@@ -113,7 +134,7 @@ export class AuthService {
       catchError(error => {
         // Even if logout request fails, clear local state
         this.clearAuthState();
-        return throwError(error);
+        return throwError(() => error);
       })
     );
   }
@@ -125,7 +146,7 @@ export class AuthService {
     return this.http.get<User>(`${this.API_URL}/current`, {
       withCredentials: true
     }).pipe(
-      catchError(this.handleError)
+      catchError(this.handleError.bind(this))
     );
   }
 
@@ -198,43 +219,22 @@ export class AuthService {
   }
 
   /**
-   * Get user role display
+   * Update user in state (for profile updates)
    */
-  getUserRoleDisplay(): string {
-    const user = this.currentUserSubject.value;
-    if (!user) return '';
-
-    if (this.isAdmin()) {
-      return 'Administrator';
-    }
-
-    if (user.roles && user.roles.length > 0) {
-      return user.roles.map(role =>
-        role.replace('ROLE_', '').toLowerCase()
-      ).join(', ');
-    }
-
-    return 'User';
+  updateUserInState(updatedUser: User): void {
+    this.setAuthState(updatedUser);
   }
 
   /**
-   * Check if user account is verified
+   * Set authentication state
    */
-  isUserVerified(): boolean {
-    const user = this.currentUserSubject.value;
-    return user?.emailVerified || false;
-  }
-
-  /**
-   * Set authentication state (called after successful login or user refresh)
-   */
-  setAuthState(user: User): void {
+  private setAuthState(user: User): void {
     this.currentUserSubject.next(user);
     this.isAuthenticatedSubject.next(true);
   }
 
   /**
-   * Clear authentication state (called on logout or auth failure)
+   * Clear authentication state
    */
   clearAuthState(): void {
     this.currentUserSubject.next(null);
@@ -242,153 +242,40 @@ export class AuthService {
   }
 
   /**
-   * Refresh user data from server
+   * Get user capabilities for UI
    */
-  refreshUser(): Observable<User> {
-    return this.getCurrentUser().pipe(
-      tap(user => {
-        this.setAuthState(user);
-      }),
-      catchError(error => {
-        this.clearAuthState();
-        return throwError(error);
-      })
-    );
-  }
-
-  /**
-   * Update user data in state (after profile update)
-   */
-  updateUserInState(updatedUser: User): void {
-    this.currentUserSubject.next(updatedUser);
-  }
-
-  /**
-   * Check if session is valid
-   */
-  checkSession(): Observable<boolean> {
-    return this.getCurrentUser().pipe(
-      map(user => {
-        if (user) {
-          this.setAuthState(user);
-          return true;
-        } else {
-          this.clearAuthState();
-          return false;
-        }
-      }),
-      catchError(() => {
-        this.clearAuthState();
-        return [false];
-      })
-    );
-  }
-
-  /**
-   * Force logout (clear state and optionally redirect)
-   */
-  forceLogout(redirectToLogin: boolean = true): void {
-    this.clearAuthState();
-
-    if (redirectToLogin) {
-      this.router.navigate(['/login'], {
-        queryParams: { message: 'Session expired. Please log in again.' }
-      });
-    }
-  }
-
-  /**
-   * Handle authentication errors
-   */
-  handleAuthError(error: any): void {
-    console.error('Authentication error:', error);
-
-    if (error.status === 401 || error.status === 403) {
-      this.forceLogout();
-    }
-  }
-
-  /**
-   * Get authentication headers for manual requests
-   */
-  getAuthHeaders(): { [header: string]: string } {
-    // For session-based auth, credentials are handled by cookies
-    // This method exists for compatibility but returns empty headers
-    return {};
-  }
-
-  /**
-   * Check if user can access admin features
-   */
-  canAccessAdmin(): boolean {
-    return this.isAdmin() && this.isAuthenticated();
-  }
-
-  /**
-   * Check if user can access specific feature
-   */
-  canAccess(requiredRoles: string[]): boolean {
-    if (!this.isAuthenticated()) {
-      return false;
-    }
-
-    if (requiredRoles.length === 0) {
-      return true; // No specific roles required, just authentication
-    }
-
-    return this.hasAnyRole(requiredRoles);
-  }
-
-  /**
-   * Get user permissions/capabilities
-   */
-  getUserCapabilities(): string[] {
+  getUserCapabilities(): { canManageUsers: boolean; canViewReports: boolean; canEditFlowers: boolean; } {
     const user = this.currentUserSubject.value;
-    if (!user) return [];
+    const isAdmin = user?.isAdmin || false;
+    const hasAdminRole = this.hasRole('ROLE_ADMIN');
 
-    const capabilities: string[] = ['read'];
-
-    if (user.roles?.includes('ROLE_USER')) {
-      capabilities.push('create_bouquet', 'purchase');
-    }
-
-    if (user.roles?.includes('ROLE_ADMIN')) {
-      capabilities.push('admin', 'manage_flowers', 'manage_users', 'view_analytics');
-    }
-
-    if (user.roles?.includes('ROLE_MODERATOR')) {
-      capabilities.push('moderate_content', 'manage_orders');
-    }
-
-    return capabilities;
+    return {
+      canManageUsers: isAdmin || hasAdminRole,
+      canViewReports: isAdmin || hasAdminRole,
+      canEditFlowers: isAdmin || hasAdminRole
+    };
   }
 
   /**
-   * Check if user has specific capability
+   * Enhanced error handling
    */
-  hasCapability(capability: string): boolean {
-    return this.getUserCapabilities().includes(capability);
-  }
-
-  /**
-   * Handle HTTP errors - simplified to avoid circular dependencies
-   */
-  private handleError = (error: HttpErrorResponse) => {
-    let errorMessage = 'An error occurred';
+  private handleError(error: HttpErrorResponse): Observable<never> {
+    let errorMessage: string;
 
     if (error.error instanceof ErrorEvent) {
       // Client-side error
-      errorMessage = `Error: ${error.error.message}`;
+      errorMessage = `Client Error: ${error.error.message}`;
     } else {
       // Server-side error
       switch (error.status) {
         case 401:
-          errorMessage = 'Invalid credentials or session expired';
-          // Don't call handleAuthError here to avoid potential circular calls
-          this.clearAuthState();
+          errorMessage = 'Invalid username or password';
           break;
         case 403:
-          errorMessage = 'Access denied';
+          errorMessage = 'Access forbidden';
+          break;
+        case 404:
+          errorMessage = 'Service not found. Please check your connection.';
           break;
         case 429:
           errorMessage = 'Too many attempts. Please try again later';
@@ -401,8 +288,9 @@ export class AuthService {
       }
     }
 
-    console.error('Auth Service Error:', errorMessage);
-    return throwError(errorMessage);
+    console.error('Auth Service Error:', error);
+    console.error('Error Details:', errorMessage);
+    return throwError(() => new Error(errorMessage));
   }
 
   /**
@@ -410,6 +298,7 @@ export class AuthService {
    */
   debugAuthState(): void {
     console.log('=== Auth Service Debug ===');
+    console.log('API URL:', this.API_URL);
     console.log('Current User:', this.currentUserSubject.value);
     console.log('Is Authenticated:', this.isAuthenticatedSubject.value);
     console.log('Is Admin:', this.isAdmin());
