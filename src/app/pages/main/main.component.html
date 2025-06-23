@@ -129,11 +129,11 @@
       <!-- Checkout Button -->
       <button
         *ngIf="isAuthenticated()"
-        (click)="proceedToCheckout()"
+        (click)="showCheckout()"
         class="checkout-btn"
         [disabled]="bouquet.length === 0"
         type="button">
-        Proceed to Checkout
+        🚀 Quick Checkout
       </button>
 
       <button

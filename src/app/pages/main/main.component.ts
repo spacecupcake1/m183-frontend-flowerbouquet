@@ -307,15 +307,78 @@ export class MainComponent implements OnInit, OnDestroy {
    * Confirm order
    */
   confirmOrder(): void {
+    if (this.bouquet.length === 0) {
+      alert('Your bouquet is empty.');
+      return;
+    }
+
+    if (!this.isAuthenticated()) {
+      alert('Please log in to complete your order.');
+      this.router.navigate(['/login']);
+      return;
+    }
+
     this.isLoading = true;
 
-    // Simulate order processing
+    // Create simple order object
+    const orderData = {
+      items: this.bouquet.map(item => ({
+        flowerId: item.flower.id,
+        flowerName: item.flower.name,
+        quantity: item.quantity,
+        price: item.flower.price,
+        subtotal: item.flower.price * item.quantity
+      })),
+      totalAmount: this.getBouquetTotal(),
+      totalItems: this.getBouquetItemCount(),
+      orderDate: new Date().toISOString(),
+      status: 'confirmed'
+    };
+
+    console.log('Processing order:', orderData);
+
+    // Option 1: Save to backend (if you have an order endpoint)
+    /*
+    this.flowerService.createOrder(orderData).subscribe({
+      next: (response) => {
+        this.handleOrderSuccess();
+      },
+      error: (error) => {
+        console.error('Order failed:', error);
+        this.isLoading = false;
+        alert('Order failed. Please try again.');
+      }
+    });
+    */
+
+    // Option 2: Simple simulation (current approach)
     setTimeout(() => {
-      this.isLoading = false;
-      this.showCheckoutModal = false;
-      this.showOrderConfirmation = true;
-      this.bouquet = [];
-    }, 2000);
+      this.handleOrderSuccess();
+    }, 1500);
+  }
+
+  /**
+   * Handle successful order completion
+   */
+  private handleOrderSuccess(): void {
+    // Clear the cart/bouquet
+    this.flowerService.clearCart().subscribe({
+      next: () => {
+        console.log('Cart cleared successfully');
+      },
+      error: (error) => {
+        console.warn('Failed to clear cart:', error);
+        // Continue anyway
+      }
+    });
+
+    // Update UI
+    this.isLoading = false;
+    this.showCheckoutModal = false;
+    this.showOrderConfirmation = true;
+    this.bouquet = [];
+
+    console.log('Order completed successfully!');
   }
 
   /**
