@@ -167,7 +167,7 @@
                 class="availability-badge"
                 [ngClass]="{
                   'available': isFlowerAvailable(flower),
-                  'limited': flower.availablity?.toLowerCase() === 'limited',
+                  'limited': flower.availablity.toLowerCase() === 'limited',
                   'unavailable': !isFlowerAvailable(flower)
                 }">
                 {{ flower.availablity | titlecase }}
@@ -182,7 +182,7 @@
             </p>
             <div class="flower-details">
               <span class="flower-color">
-                <span class="color-dot" [style.background-color]="flower.color?.toLowerCase()"></span>
+                <span class="color-dot" [style.background-color]="flower.color.toLowerCase()"></span>
                 {{ flower.color | titlecase }}
               </span>
               <span class="flower-price">{{ formatPrice(flower.price) }}</span>
